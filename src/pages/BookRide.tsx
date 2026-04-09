@@ -11,7 +11,8 @@ import MapView from '@/components/MapView';
 import PlacesAutocomplete from '@/components/PlacesAutocomplete';
 import {
   MapPin, Clock, Users, ArrowRight, Search, ChevronLeft, ChevronRight,
-  Calendar, AlertCircle, Car, User as UserIcon, Loader2, CheckCircle2, XCircle
+  Calendar, AlertCircle, Car, User as UserIcon, Loader2, CheckCircle2, XCircle,
+  Navigation, Upload, Image as ImageIcon, ListOrdered
 } from 'lucide-react';
 
 const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
@@ -258,19 +259,71 @@ const BookRide = () => {
   const isPickupValid = pickupMode === 'start' ? true : (!!customPickup && pickupResult?.ok === true);
   const isDropoffValid = dropoffMode === 'end' ? true : (!!customDropoff && dropoffResult?.ok === true);
 
+  // InstaPay payment proof
+  const [paymentProof, setPaymentProof] = useState<File | null>(null);
+  const [paymentPreview, setPaymentPreview] = useState<string | null>(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePaymentFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: lang === 'ar' ? 'الملف كبير جداً' : 'File too large', description: lang === 'ar' ? 'الحد الأقصى 5 ميجا' : 'Max 5MB', variant: 'destructive' });
+      return;
+    }
+    setPaymentProof(file);
+    setPaymentPreview(URL.createObjectURL(file));
+  };
+
+  const isRideFull = selectedRide?.available_seats === 0;
+
   // --- Booking ---
-  const handleBook = async () => {
+  const handleBook = async (asWaitlist = false) => {
     if (!user || !selectedRide) return;
     if (!isPickupValid || !isDropoffValid) {
       toast({ title: lang === 'ar' ? 'اختر نقاط الركوب والنزول' : 'Select pickup & dropoff', variant: 'destructive' });
       return;
     }
+    if (!asWaitlist && !paymentProof) {
+      toast({ title: lang === 'ar' ? 'أرفق إثبات الدفع' : 'Attach payment proof', description: lang === 'ar' ? 'أرسل لقطة شاشة من InstaPay' : 'Upload InstaPay screenshot', variant: 'destructive' });
+      return;
+    }
+    if (!asWaitlist && selectedRide.available_seats < 1) {
+      toast({ title: lang === 'ar' ? 'لا توجد مقاعد' : 'No seats available', variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
-      if (selectedRide.available_seats < 1) {
-        toast({ title: lang === 'ar' ? 'لا توجد مقاعد' : 'No seats available', variant: 'destructive' });
-        setLoading(false);
-        return;
+      let proofUrl: string | null = null;
+
+      // Upload payment proof
+      if (paymentProof) {
+        setUploadingProof(true);
+        const ext = paymentProof.name.split('.').pop();
+        const filePath = `${user.id}/${Date.now()}.${ext}`;
+        const { error: uploadErr } = await supabase.storage
+          .from('instapay-proofs')
+          .upload(filePath, paymentProof);
+        if (uploadErr) throw uploadErr;
+        const { data: urlData } = supabase.storage.from('instapay-proofs').getPublicUrl(filePath);
+        proofUrl = urlData?.publicUrl || filePath;
+        setUploadingProof(false);
+      }
+
+      // Calculate waitlist position
+      let waitlistPos: number | null = null;
+      if (asWaitlist) {
+        const { data: existingWaitlist } = await supabase
+          .from('bookings')
+          .select('waitlist_position')
+          .eq('route_id', selectedRide.route_id)
+          .eq('scheduled_date', selectedRide.ride_date)
+          .eq('scheduled_time', selectedRide.departure_time)
+          .eq('status', 'waitlist')
+          .order('waitlist_position', { ascending: false })
+          .limit(1);
+        waitlistPos = ((existingWaitlist?.[0]?.waitlist_position as number) || 0) + 1;
       }
 
       const bookingData: any = {
@@ -281,12 +334,13 @@ const BookRide = () => {
         total_price: selectedRide.routes?.price || 0,
         scheduled_date: selectedRide.ride_date,
         scheduled_time: selectedRide.departure_time,
-        status: 'pending',
+        status: asWaitlist ? 'waitlist' : 'pending',
+        payment_proof_url: proofUrl,
+        waitlist_position: waitlistPos,
       };
 
       // Pickup
       if (pickupMode === 'start') {
-        // Use route origin as pickup
         bookingData.custom_pickup_lat = selectedRide.routes.origin_lat;
         bookingData.custom_pickup_lng = selectedRide.routes.origin_lng;
         bookingData.custom_pickup_name = lang === 'ar' ? selectedRide.routes.origin_name_ar : selectedRide.routes.origin_name_en;
@@ -310,16 +364,26 @@ const BookRide = () => {
       const { error } = await supabase.from('bookings').insert(bookingData);
       if (error) throw error;
 
-      await supabase.from('ride_instances').update({
-        available_seats: selectedRide.available_seats - 1,
-      }).eq('id', selectedRide.id);
+      if (!asWaitlist) {
+        await supabase.from('ride_instances').update({
+          available_seats: selectedRide.available_seats - 1,
+        }).eq('id', selectedRide.id);
+      }
 
-      toast({ title: t('booking.success'), description: t('booking.successDesc') });
+      toast({
+        title: asWaitlist
+          ? (lang === 'ar' ? 'تم إضافتك لقائمة الانتظار' : 'Added to waitlist')
+          : (lang === 'ar' ? 'تم الحجز بنجاح' : 'Booking submitted'),
+        description: asWaitlist
+          ? (lang === 'ar' ? `ترتيبك: #${waitlistPos}` : `Your position: #${waitlistPos}`)
+          : (lang === 'ar' ? 'في انتظار موافقة المسؤول' : 'Waiting for admin approval'),
+      });
       navigate('/my-bookings');
     } catch (error: any) {
       toast({ title: t('auth.error'), description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
+      setUploadingProof(false);
     }
   };
 
@@ -394,20 +458,38 @@ const BookRide = () => {
         </div>
 
         {isStartMode && (
-          <div className="flex items-center gap-2 text-sm p-3 rounded-lg bg-green-50 text-green-700">
-            <CheckCircle2 className="w-4 h-4" />
-            <div>
-              <p className="font-medium">
-                {isPickup
-                  ? (lang === 'ar' ? selectedRide?.routes?.origin_name_ar : selectedRide?.routes?.origin_name_en)
-                  : (lang === 'ar' ? selectedRide?.routes?.destination_name_ar : selectedRide?.routes?.destination_name_en)}
-              </p>
-              <p className="text-xs">
-                {isPickup
-                  ? (lang === 'ar' ? 'الباص ينتظر 5 دقائق عند نقطة الانطلاق' : 'Bus waits 5 min at starting point')
-                  : (lang === 'ar' ? 'نقطة النهاية للمسار' : 'Route end point')}
-              </p>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm p-3 rounded-lg bg-green-50 text-green-700">
+              <CheckCircle2 className="w-4 h-4" />
+              <div>
+                <p className="font-medium">
+                  {isPickup
+                    ? (lang === 'ar' ? selectedRide?.routes?.origin_name_ar : selectedRide?.routes?.origin_name_en)
+                    : (lang === 'ar' ? selectedRide?.routes?.destination_name_ar : selectedRide?.routes?.destination_name_en)}
+                </p>
+                <p className="text-xs">
+                  {isPickup
+                    ? (lang === 'ar' ? 'الباص ينتظر 5 دقائق عند نقطة الانطلاق' : 'Bus waits 5 min at starting point')
+                    : (lang === 'ar' ? 'نقطة النهاية للمسار' : 'Route end point')}
+                </p>
+              </div>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2"
+              onClick={() => {
+                const lat = isPickup ? selectedRide?.routes?.origin_lat : selectedRide?.routes?.destination_lat;
+                const lng = isPickup ? selectedRide?.routes?.origin_lng : selectedRide?.routes?.destination_lng;
+                const label = isPickup
+                  ? (lang === 'ar' ? selectedRide?.routes?.origin_name_ar : selectedRide?.routes?.origin_name_en)
+                  : (lang === 'ar' ? selectedRide?.routes?.destination_name_ar : selectedRide?.routes?.destination_name_en);
+                window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=&travelmode=driving`, '_blank');
+              }}
+            >
+              <Navigation className="w-4 h-4" />
+              {lang === 'ar' ? 'فتح في خرائط جوجل' : 'Open in Google Maps'}
+            </Button>
           </div>
         )}
 
@@ -438,31 +520,46 @@ const BookRide = () => {
             )}
 
             {customPoint && result && (
-              <div className={`flex items-center gap-2 text-sm p-3 rounded-lg ${
-                result.ok ? 'bg-green-50 text-green-700' : 'bg-destructive/10 text-destructive'
-              }`}>
-                {result.ok ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    <div>
-                      <p className="font-medium">{customPoint.name}</p>
-                      <p className="text-xs">
-                        {result.onRoute
-                          ? (lang === 'ar' ? 'على المسار مباشرة ✓' : 'Directly on route ✓')
-                          : (lang === 'ar' ? `+${result.minutes} دقيقة إنحراف ✓` : `+${result.minutes} min deviation ✓`)}
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="w-4 h-4" />
-                    <div>
-                      <p className="font-medium">{lang === 'ar' ? 'موقع بعيد جداً' : 'Too far from route'}</p>
-                      <p className="text-xs">
-                        {lang === 'ar' ? `+${result.minutes} دقيقة (الحد 5 دقائق)` : `+${result.minutes} min (max 5 min)`}
-                      </p>
-                    </div>
-                  </>
+              <div className="space-y-2">
+                <div className={`flex items-center gap-2 text-sm p-3 rounded-lg ${
+                  result.ok ? 'bg-green-50 text-green-700' : 'bg-destructive/10 text-destructive'
+                }`}>
+                  {result.ok ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <div>
+                        <p className="font-medium">{customPoint.name}</p>
+                        <p className="text-xs">
+                          {result.onRoute
+                            ? (lang === 'ar' ? 'على المسار مباشرة ✓' : 'Directly on route ✓')
+                            : (lang === 'ar' ? `+${result.minutes} دقيقة إنحراف ✓` : `+${result.minutes} min deviation ✓`)}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="w-4 h-4" />
+                      <div>
+                        <p className="font-medium">{lang === 'ar' ? 'موقع بعيد جداً' : 'Too far from route'}</p>
+                        <p className="text-xs">
+                          {lang === 'ar' ? `+${result.minutes} دقيقة (الحد 5 دقائق)` : `+${result.minutes} min (max 5 min)`}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {result.ok && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-2"
+                    onClick={() => {
+                      window.open(`https://www.google.com/maps/dir/?api=1&destination=${customPoint.lat},${customPoint.lng}&travelmode=driving`, '_blank');
+                    }}
+                  >
+                    <Navigation className="w-4 h-4" />
+                    {lang === 'ar' ? 'فتح في خرائط جوجل' : 'Open in Google Maps'}
+                  </Button>
                 )}
               </div>
             )}
@@ -528,8 +625,7 @@ const BookRide = () => {
                 <div className="space-y-3">
                   {filteredRides.map((ride) => (
                     <button key={ride.id} onClick={() => selectRide(ride)}
-                      disabled={ride.available_seats === 0}
-                      className="w-full text-start bg-card border border-border rounded-xl p-5 hover:border-secondary/40 hover:shadow-card-hover transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                      className="w-full text-start bg-card border border-border rounded-xl p-5 hover:border-secondary/40 hover:shadow-card-hover transition-all">
                       <div className="flex items-center gap-3 mb-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
                           {ride.driver_profile?.avatar_url ? (
@@ -676,18 +772,79 @@ const BookRide = () => {
             {/* Dropoff */}
             {renderPointSelector('dropoff', dropoffMode, setDropoffMode, customDropoff, validatingDropoff, dropoffResult)}
 
+            {/* InstaPay Payment */}
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-primary" />
+                {lang === 'ar' ? 'الدفع عبر InstaPay' : 'Pay via InstaPay'}
+              </h3>
+              <div className="bg-surface rounded-xl p-4 text-sm text-muted-foreground space-y-2">
+                <p>{lang === 'ar' ? 'حوّل المبلغ عبر InstaPay ثم ارفع لقطة شاشة للتحويل:' : 'Transfer the amount via InstaPay then upload a screenshot:'}</p>
+                <p className="font-bold text-foreground text-lg">{selectedRide.routes?.price} EGP</p>
+                <p className="text-xs">{lang === 'ar' ? 'سيتم مراجعة الدفع من قبل المسؤول' : 'Payment will be reviewed by admin'}</p>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePaymentFile}
+              />
+
+              {paymentPreview ? (
+                <div className="space-y-2">
+                  <img src={paymentPreview} alt="Payment proof" className="w-full h-48 object-contain rounded-lg border border-border bg-muted" />
+                  <Button variant="outline" size="sm" className="w-full" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="w-4 h-4 me-1" />
+                    {lang === 'ar' ? 'تغيير الصورة' : 'Change Image'}
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="w-full h-24 border-dashed border-2 flex-col gap-2"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="w-6 h-6 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    {lang === 'ar' ? 'ارفع لقطة شاشة InstaPay' : 'Upload InstaPay Screenshot'}
+                  </span>
+                </Button>
+              )}
+            </div>
+
             {/* Summary & Book */}
             <div className="bg-card border border-border rounded-2xl p-5">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-muted-foreground">{lang === 'ar' ? 'مقعد واحد' : '1 Seat'}</span>
                 <span className="text-lg font-bold text-primary">{selectedRide.routes?.price} EGP</span>
               </div>
-              <Button className="w-full mt-3" size="lg" onClick={handleBook}
-                disabled={loading || selectedRide.available_seats === 0 || !isPickupValid || !isDropoffValid}>
-                {loading ? t('auth.loading') : (selectedRide.available_seats === 0
-                  ? (lang === 'ar' ? 'مكتمل' : 'Full')
-                  : t('booking.confirm'))}
-              </Button>
+
+              {!isRideFull ? (
+                <Button className="w-full mt-3" size="lg" onClick={() => handleBook(false)}
+                  disabled={loading || !isPickupValid || !isDropoffValid || !paymentProof}>
+                  {loading ? (
+                    <><Loader2 className="w-4 h-4 me-1 animate-spin" />{lang === 'ar' ? 'جاري الحجز...' : 'Booking...'}</>
+                  ) : (
+                    lang === 'ar' ? 'تأكيد الحجز' : 'Confirm Booking'
+                  )}
+                </Button>
+              ) : (
+                <div className="space-y-3 mt-3">
+                  <div className="flex items-center gap-2 text-sm text-destructive font-medium p-2 bg-destructive/10 rounded-lg">
+                    <AlertCircle className="w-4 h-4" />
+                    {lang === 'ar' ? 'الرحلة مكتملة العدد' : 'This ride is full'}
+                  </div>
+                  <Button className="w-full" size="lg" variant="secondary" onClick={() => handleBook(true)}
+                    disabled={loading || !isPickupValid || !isDropoffValid}>
+                    <ListOrdered className="w-4 h-4 me-1" />
+                    {loading
+                      ? (lang === 'ar' ? 'جاري التسجيل...' : 'Joining...')
+                      : (lang === 'ar' ? 'الانضمام لقائمة الانتظار' : 'Join Waitlist')}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}
