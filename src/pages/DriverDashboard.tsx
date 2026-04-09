@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Globe, LogOut, User, MapPin, Clock, Users, Car, Calendar, DollarSign, Navigation, CheckCircle2, XCircle, Loader2, Play, Plus, Trash2, Repeat, TrendingUp, Star } from 'lucide-react';
 import { useDriverBookingNotifications } from '@/hooks/useBookingNotifications';
 
-type TabType = 'overview' | 'trips' | 'schedule' | 'shuttle';
+type TabType = 'overview' | 'trips' | 'earnings' | 'schedule' | 'shuttle';
 
 const DriverDashboard = () => {
   const { user, signOut } = useAuth();
@@ -190,6 +190,7 @@ const DriverDashboard = () => {
   const tabs: { key: TabType; icon: any; label: string }[] = [
     { key: 'overview', icon: Car, label: t('driverDash.overview') },
     { key: 'trips', icon: Navigation, label: t('driverDash.trips') },
+    { key: 'earnings', icon: TrendingUp, label: lang === 'ar' ? 'الأرباح' : 'Earnings' },
     { key: 'schedule', icon: Calendar, label: t('driverDash.schedule') },
     { key: 'shuttle', icon: MapPin, label: t('driverDash.shuttleInfo') },
   ];
