@@ -37,6 +37,7 @@ const TrackShuttle = () => {
   const [shuttle, setShuttle] = useState<any>(null);
   const [route, setRoute] = useState<any>(null);
   const [driver, setDriver] = useState<any>(null);
+  const [driverApplication, setDriverApplication] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -110,12 +111,13 @@ const TrackShuttle = () => {
 
       // Fetch driver profile
       if (bookingData.shuttles?.driver_id) {
-        const { data: driverProfile } = await supabase
-          .from('profiles')
-          .select('full_name, avatar_url, phone')
-          .eq('user_id', bookingData.shuttles.driver_id)
-          .single();
-        setDriver(driverProfile);
+        const driverId = bookingData.shuttles.driver_id;
+        const [profileRes, appRes] = await Promise.all([
+          supabase.from('profiles').select('full_name, avatar_url, phone').eq('user_id', driverId).single(),
+          supabase.from('driver_applications').select('license_number, vehicle_model, vehicle_year, phone').eq('user_id', driverId).eq('status', 'approved').single(),
+        ]);
+        setDriver(profileRes.data);
+        setDriverApplication(appRes.data);
       }
 
       // Fetch all bookings on same shuttle+date+time for ordering
@@ -347,16 +349,30 @@ const TrackShuttle = () => {
 
       {/* Map */}
       <div className="flex-1 relative">
-        <MapView
-          className="h-full min-h-[350px]"
-          markers={markers}
-          origin={route ? { lat: route.origin_lat, lng: route.origin_lng } : undefined}
-          destination={route ? { lat: route.destination_lat, lng: route.destination_lng } : undefined}
-          showDirections={!!route}
-          center={shuttle?.current_lat ? { lat: shuttle.current_lat, lng: shuttle.current_lng } : undefined}
-          zoom={14}
-          showUserLocation
-        />
+        {(!shuttle?.current_lat || !shuttle?.current_lng) && !loading ? (
+          <div className="h-full min-h-[350px] bg-muted flex flex-col items-center justify-center text-center p-6">
+            <Car className="w-16 h-16 text-muted-foreground/40 mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-1">
+              {lang === 'ar' ? 'الرحلة لم تبدأ بعد' : 'Ride hasn\'t started yet'}
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              {lang === 'ar'
+                ? 'سيظهر الموقع المباشر للشاتل هنا عندما يبدأ السائق الرحلة'
+                : 'The live shuttle location will appear here once the driver starts the ride'}
+            </p>
+          </div>
+        ) : (
+          <MapView
+            className="h-full min-h-[350px]"
+            markers={markers}
+            origin={route ? { lat: route.origin_lat, lng: route.origin_lng } : undefined}
+            destination={route ? { lat: route.destination_lat, lng: route.destination_lng } : undefined}
+            showDirections={!!route}
+            center={shuttle?.current_lat ? { lat: shuttle.current_lat, lng: shuttle.current_lng } : undefined}
+            zoom={14}
+            showUserLocation
+          />
+        )}
 
         {/* ETA Floating Card */}
         {booking && !loading && (
@@ -421,27 +437,38 @@ const TrackShuttle = () => {
                 </div>
 
                 {/* Driver Info */}
-                {driver && (
-                  <div className="flex items-center gap-3 bg-surface rounded-xl p-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-                      {driver.avatar_url ? (
-                        <img src={driver.avatar_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <Users className="w-5 h-5 text-primary" />
+                {(driver || driverApplication) && (
+                  <div className="bg-surface rounded-xl p-3 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                        {driver?.avatar_url ? (
+                          <img src={driver.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Users className="w-5 h-5 text-primary" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground text-sm truncate">{driver?.full_name || (lang === 'ar' ? 'السائق' : 'Driver')}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {driverApplication?.vehicle_model || shuttle?.vehicle_model}
+                          {driverApplication?.vehicle_year ? ` (${driverApplication.vehicle_year})` : ''}
+                          {' · '}
+                          {shuttle?.vehicle_plate}
+                        </p>
+                      </div>
+                      {(driverApplication?.phone || driver?.phone) && (
+                        <a href={`tel:${driverApplication?.phone || driver?.phone}`}>
+                          <Button variant="outline" size="icon" className="rounded-full w-9 h-9">
+                            <Phone className="w-4 h-4" />
+                          </Button>
+                        </a>
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground text-sm truncate">{driver.full_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {shuttle?.vehicle_model} · {shuttle?.vehicle_plate}
-                      </p>
-                    </div>
-                    {driver.phone && (
-                      <a href={`tel:${driver.phone}`}>
-                        <Button variant="outline" size="icon" className="rounded-full w-9 h-9">
-                          <Phone className="w-4 h-4" />
-                        </Button>
-                      </a>
+                    {driverApplication?.license_number && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground ps-[52px]">
+                        <Shield className="w-3 h-3" />
+                        <span>{lang === 'ar' ? 'رخصة:' : 'License:'} {driverApplication.license_number}</span>
+                      </div>
                     )}
                   </div>
                 )}
