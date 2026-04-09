@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { MapPin, Clock, Ticket, Plus, LogOut, Globe, User, Navigation } from 'lucide-react';
+import { MapPin, Clock, Ticket, Plus, LogOut, Globe, User, Navigation, Shield, Car } from 'lucide-react';
 import { useBookingNotifications } from '@/hooks/useBookingNotifications';
 
 const Dashboard = () => {
@@ -14,16 +14,22 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isDriver, setIsDriver] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
-      const [{ data: profileData }, { data: bookingsData }] = await Promise.all([
+      const [{ data: profileData }, { data: bookingsData }, { data: rolesData }] = await Promise.all([
         supabase.from('profiles').select('*').eq('user_id', user.id).single(),
         supabase.from('bookings').select('*, routes(*), shuttles(*)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10),
+        supabase.from('user_roles').select('role').eq('user_id', user.id),
       ]);
       setProfile(profileData);
       setBookings(bookingsData || []);
+      const roles = (rolesData || []).map(r => r.role);
+      setIsAdmin(roles.includes('admin'));
+      setIsDriver(profileData?.user_type === 'driver' || roles.includes('moderator'));
     };
     fetchData();
   }, [user]);
