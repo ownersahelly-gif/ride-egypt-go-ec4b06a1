@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Lock, User, ArrowRight, ArrowLeft, Car, Users, Upload, Camera, CheckCircle2, Phone } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, ArrowLeft, Car, Users, Upload, Camera, CheckCircle2, Phone, Eye, EyeOff } from 'lucide-react';
 
 type UserRole = 'rider' | 'driver';
 
@@ -84,6 +84,7 @@ const Signup = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Driver documents
   const [idFront, setIdFront] = useState<UploadedFile | null>(null);
@@ -330,8 +331,12 @@ const Signup = () => {
             <Label htmlFor="password">{t('auth.password')}</Label>
             <div className="relative">
               <Lock className="absolute start-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input id="password" type="password" placeholder="••••••••" className="ps-10"
+              <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" className="ps-10 pe-10"
                 value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <button type="button" onClick={() => setShowPassword(!showPassword)}
+                className="absolute end-3 top-3 text-muted-foreground hover:text-foreground">
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </div>
 

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
   const { signIn } = useAuth();
@@ -16,6 +16,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const Arrow = lang === 'ar' ? ArrowLeft : ArrowRight;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,8 +57,12 @@ const Login = () => {
             <Label htmlFor="password">{t('auth.password')}</Label>
             <div className="relative">
               <Lock className="absolute start-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input id="password" type="password" placeholder="••••••••" className="ps-10"
+              <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" className="ps-10 pe-10"
                 value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <button type="button" onClick={() => setShowPassword(!showPassword)}
+                className="absolute end-3 top-3 text-muted-foreground hover:text-foreground">
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </div>
 
