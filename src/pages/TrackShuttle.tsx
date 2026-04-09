@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/button';
 import MapView from '@/components/MapView';
 import {
   ChevronLeft, ChevronRight, MapPin, Clock, Car, RefreshCw,
-  Radio, Users, Navigation, Phone, MessageCircle, Key, ArrowRight
+  Radio, Users, Navigation, Phone, MessageCircle, Key, ArrowRight,
+  Shield, Share2, ExternalLink
 } from 'lucide-react';
 import RideChat from '@/components/RideChat';
+import { useToast } from '@/hooks/use-toast';
 
 interface PassengerStop {
   userId: string;
