@@ -41,7 +41,7 @@ const calcDeviation = (
   nextStop: { lat: number; lng: number },
   customPoint: { lat: number; lng: number },
 ): Promise<number> => {
-  if (typeof google === 'undefined') return Promise.resolve(999);
+  if (typeof google === 'undefined' || !google?.maps?.DirectionsService) return Promise.resolve(999);
   const ds = new google.maps.DirectionsService();
   const directReq = (): Promise<number> =>
     new Promise((res) =>
