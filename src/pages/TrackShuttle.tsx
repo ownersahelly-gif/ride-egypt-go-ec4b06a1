@@ -453,7 +453,5 @@ const TrackShuttle = () => {
   );
 };
 
-// Need ArrowRight import
-import { ArrowRight, Key } from 'lucide-react';
 
 export default TrackShuttle;
