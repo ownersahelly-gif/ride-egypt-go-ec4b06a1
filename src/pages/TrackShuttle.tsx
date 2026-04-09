@@ -437,27 +437,38 @@ const TrackShuttle = () => {
                 </div>
 
                 {/* Driver Info */}
-                {driver && (
-                  <div className="flex items-center gap-3 bg-surface rounded-xl p-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-                      {driver.avatar_url ? (
-                        <img src={driver.avatar_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <Users className="w-5 h-5 text-primary" />
+                {(driver || driverApplication) && (
+                  <div className="bg-surface rounded-xl p-3 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                        {driver?.avatar_url ? (
+                          <img src={driver.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Users className="w-5 h-5 text-primary" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground text-sm truncate">{driver?.full_name || (lang === 'ar' ? 'السائق' : 'Driver')}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {driverApplication?.vehicle_model || shuttle?.vehicle_model}
+                          {driverApplication?.vehicle_year ? ` (${driverApplication.vehicle_year})` : ''}
+                          {' · '}
+                          {shuttle?.vehicle_plate}
+                        </p>
+                      </div>
+                      {(driverApplication?.phone || driver?.phone) && (
+                        <a href={`tel:${driverApplication?.phone || driver?.phone}`}>
+                          <Button variant="outline" size="icon" className="rounded-full w-9 h-9">
+                            <Phone className="w-4 h-4" />
+                          </Button>
+                        </a>
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground text-sm truncate">{driver.full_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {shuttle?.vehicle_model} · {shuttle?.vehicle_plate}
-                      </p>
-                    </div>
-                    {driver.phone && (
-                      <a href={`tel:${driver.phone}`}>
-                        <Button variant="outline" size="icon" className="rounded-full w-9 h-9">
-                          <Phone className="w-4 h-4" />
-                        </Button>
-                      </a>
+                    {driverApplication?.license_number && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground ps-[52px]">
+                        <Shield className="w-3 h-3" />
+                        <span>{lang === 'ar' ? 'رخصة:' : 'License:'} {driverApplication.license_number}</span>
+                      </div>
                     )}
                   </div>
                 )}
