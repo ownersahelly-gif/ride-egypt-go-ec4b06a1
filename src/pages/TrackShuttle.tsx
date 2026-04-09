@@ -8,7 +8,7 @@ import MapView from '@/components/MapView';
 import {
   ChevronLeft, ChevronRight, MapPin, Clock, Car, RefreshCw,
   Radio, Users, Navigation, Phone, MessageCircle, Key, ArrowRight,
-  Shield, Share2, ExternalLink
+  Shield, Share2, ExternalLink, Star
 } from 'lucide-react';
 import RideChat from '@/components/RideChat';
 import { useToast } from '@/hooks/use-toast';
@@ -38,6 +38,7 @@ const TrackShuttle = () => {
   const [route, setRoute] = useState<any>(null);
   const [driver, setDriver] = useState<any>(null);
   const [driverApplication, setDriverApplication] = useState<any>(null);
+  const [driverRating, setDriverRating] = useState<{ avg: number; count: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -112,12 +113,17 @@ const TrackShuttle = () => {
       // Fetch driver profile
       if (bookingData.shuttles?.driver_id) {
         const driverId = bookingData.shuttles.driver_id;
-        const [profileRes, appRes] = await Promise.all([
+        const [profileRes, appRes, ratingsRes] = await Promise.all([
           supabase.from('profiles').select('full_name, avatar_url, phone').eq('user_id', driverId).single(),
           supabase.from('driver_applications').select('license_number, vehicle_model, vehicle_year, phone').eq('user_id', driverId).eq('status', 'approved').single(),
+          supabase.from('ratings').select('rating').eq('driver_id', driverId),
         ]);
         setDriver(profileRes.data);
         setDriverApplication(appRes.data);
+        if (ratingsRes.data && ratingsRes.data.length > 0) {
+          const avg = ratingsRes.data.reduce((sum, r) => sum + r.rating, 0) / ratingsRes.data.length;
+          setDriverRating({ avg: Math.round(avg * 10) / 10, count: ratingsRes.data.length });
+        }
       }
 
       // Fetch all bookings on same shuttle+date+time for ordering
