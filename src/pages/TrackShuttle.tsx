@@ -311,6 +311,30 @@ const TrackShuttle = () => {
             </span>
           )}
           <div className="ms-auto flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive"
+              onClick={() => setSosActive(true)}
+              title="SOS"
+            >
+              <Shield className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => {
+              const url = `${window.location.origin}/track?booking=${bookingId}`;
+              if (navigator.share) {
+                navigator.share({
+                  title: lang === 'ar' ? 'تتبع رحلتي' : 'Track My Ride',
+                  text: lang === 'ar' ? 'تتبع رحلتي المباشرة على مسار' : 'Track my live ride on Massar',
+                  url,
+                });
+              } else {
+                navigator.clipboard.writeText(url);
+                toast({ title: lang === 'ar' ? 'تم نسخ الرابط' : 'Link copied!' });
+              }
+            }}>
+              <Share2 className="w-4 h-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => setChatOpen(true)}>
               <MessageCircle className="w-4 h-4" />
             </Button>
