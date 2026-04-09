@@ -4,7 +4,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import MapView from '@/components/MapView';
-import { ChevronLeft, ChevronRight, MapPin, Clock, Car, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Clock, Car, RefreshCw, Radio } from 'lucide-react';
 
 const TrackShuttle = () => {
   const { t, lang } = useLanguage();
@@ -16,6 +16,7 @@ const TrackShuttle = () => {
   const [shuttle, setShuttle] = useState<any>(null);
   const [route, setRoute] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isLive, setIsLive] = useState(false);
 
   const fetchData = async () => {
     if (!bookingId) { setLoading(false); return; }
@@ -35,13 +36,41 @@ const TrackShuttle = () => {
 
   useEffect(() => { fetchData(); }, [bookingId]);
 
-  // Auto-refresh shuttle location every 10s
+  // Supabase Realtime subscription for live shuttle location
+  useEffect(() => {
+    if (!shuttle?.id) return;
+    
+    const channel = supabase
+      .channel(`shuttle-${shuttle.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'shuttles',
+          filter: `id=eq.${shuttle.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          setShuttle((prev: any) => ({ ...prev, ...updated }));
+        }
+      )
+      .subscribe((status) => {
+        setIsLive(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [shuttle?.id]);
+
+  // Fallback polling every 15s in case realtime is delayed
   useEffect(() => {
     if (!shuttle?.id) return;
     const interval = setInterval(async () => {
       const { data } = await supabase.from('shuttles').select('current_lat, current_lng, status').eq('id', shuttle.id).single();
       if (data) setShuttle((prev: any) => ({ ...prev, ...data }));
-    }, 10000);
+    }, 15000);
     return () => clearInterval(interval);
   }, [shuttle?.id]);
 
@@ -60,6 +89,12 @@ const TrackShuttle = () => {
         <div className="container mx-auto flex items-center h-16 px-4 gap-4">
           <Link to="/my-bookings"><Button variant="ghost" size="icon"><Back className="w-5 h-5" /></Button></Link>
           <h1 className="text-lg font-bold text-foreground">{t('tracking.title')}</h1>
+          {isLive && (
+            <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
+              <Radio className="w-3 h-3 animate-pulse" />
+              {lang === 'ar' ? 'مباشر' : 'Live'}
+            </span>
+          )}
           <div className="ms-auto">
             <Button variant="ghost" size="icon" onClick={fetchData}><RefreshCw className="w-4 h-4" /></Button>
           </div>
@@ -75,6 +110,7 @@ const TrackShuttle = () => {
           showDirections={!!route}
           center={shuttle?.current_lat ? { lat: shuttle.current_lat, lng: shuttle.current_lng } : undefined}
           zoom={13}
+          showUserLocation={true}
         />
 
         {/* Bottom info card */}
