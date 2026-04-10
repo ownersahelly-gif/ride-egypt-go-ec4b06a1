@@ -224,15 +224,17 @@ const MyBookings = () => {
 
                   {/* ETA Banner for active rides */}
                   {eta && !booking.status.includes('boarded') && (
-                    <div className="bg-primary/10 rounded-lg p-3 mb-3 flex items-center justify-between">
+                    <div className={`${eta.isLive ? 'bg-primary/10' : 'bg-secondary/10'} rounded-lg p-3 mb-3 flex items-center justify-between`}>
                       <div className="flex items-center gap-2">
-                        <Timer className="w-4 h-4 text-primary" />
+                        <Timer className={`w-4 h-4 ${eta.isLive ? 'text-primary' : 'text-secondary'}`} />
                         <div>
                           <p className="text-sm font-semibold text-foreground">
                             ~{eta.etaMin} {lang === 'ar' ? 'دقيقة' : 'min'}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {lang === 'ar' ? 'الوقت المتوقع للوصول' : 'Estimated arrival'}
+                            {eta.isLive
+                              ? (lang === 'ar' ? 'تتبع مباشر' : 'Live tracking')
+                              : (lang === 'ar' ? 'الوقت المقدر للوصول' : 'Estimated arrival')}
                           </p>
                         </div>
                       </div>
