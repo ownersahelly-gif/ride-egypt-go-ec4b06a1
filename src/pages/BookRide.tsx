@@ -909,75 +909,221 @@ const BookRide = () => {
               </div>
             </div>
 
+            {/* Saved Locations */}
+            {savedLocations.length > 0 && (
+              <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+                <h3 className="font-semibold text-foreground flex items-center gap-2">
+                  <History className="w-4 h-4 text-primary" />
+                  {lang === 'ar' ? 'المواقع السابقة' : 'Previous Locations'}
+                </h3>
+                <div className="space-y-2">
+                  {savedLocations.map((sl) => (
+                    <button
+                      key={sl.id}
+                      onClick={() => applySavedLocation(sl)}
+                      className="w-full text-start bg-surface hover:bg-muted rounded-xl p-3 transition-colors border border-border"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Bookmark className="w-4 h-4 text-secondary shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {sl.pickup_name} → {sl.dropoff_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {lang === 'ar' ? `استُخدم ${sl.use_count} مرة` : `Used ${sl.use_count} time${sl.use_count > 1 ? 's' : ''}`}
+                          </p>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Pickup */}
             {renderPointSelector('pickup', pickupMode, setPickupMode, customPickup, validatingPickup, pickupResult)}
 
             {/* Dropoff */}
             {renderPointSelector('dropoff', dropoffMode, setDropoffMode, customDropoff, validatingDropoff, dropoffResult)}
 
-            {/* InstaPay Payment */}
-            <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-              <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-primary" />
-                {lang === 'ar' ? 'الدفع عبر InstaPay' : 'Pay via InstaPay'}
-              </h3>
-              <div className="bg-surface rounded-xl p-4 text-sm text-muted-foreground space-y-2">
-                <p>{lang === 'ar' ? 'حوّل المبلغ عبر InstaPay ثم ارفع لقطة شاشة للتحويل:' : 'Transfer the amount via InstaPay then upload a screenshot:'}</p>
-                <p className="font-bold text-foreground text-lg">{selectedRide.routes?.price} EGP</p>
-                {instapayPhone && (
-                  <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-3 mt-2">
-                    <Phone className="w-5 h-5 text-primary shrink-0" />
+            {/* Active Bundle */}
+            {activeBundlePurchase && (
+              <div className="bg-card border-2 border-secondary rounded-2xl p-5 space-y-3">
+                <h3 className="font-semibold text-foreground flex items-center gap-2">
+                  <Package className="w-4 h-4 text-secondary" />
+                  {lang === 'ar' ? 'لديك باقة نشطة!' : 'You have an active bundle!'}
+                </h3>
+                <div className="bg-secondary/10 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'حوّل إلى هذا الرقم:' : 'Transfer to this number:'}</p>
-                      <p className="font-bold text-foreground text-lg font-mono" dir="ltr">{instapayPhone}</p>
+                      <p className="text-sm text-muted-foreground">{lang === 'ar' ? 'رحلات متبقية' : 'Rides remaining'}</p>
+                      <p className="text-2xl font-bold text-secondary">{activeBundlePurchase.rides_remaining}/{activeBundlePurchase.rides_total}</p>
+                    </div>
+                    <div className="text-end">
+                      <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'تنتهي في' : 'Expires'}</p>
+                      <p className="text-sm font-medium text-foreground">{new Date(activeBundlePurchase.expires_at).toLocaleDateString()}</p>
                     </div>
                   </div>
-                )}
-                <p className="text-xs">{lang === 'ar' ? 'سيتم مراجعة الدفع من قبل المسؤول' : 'Payment will be reviewed by admin'}</p>
-              </div>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handlePaymentFile}
-              />
-
-              {paymentPreview ? (
-                <div className="space-y-2">
-                  <img src={paymentPreview} alt="Payment proof" className="w-full h-48 object-contain rounded-lg border border-border bg-muted" />
-                  <Button variant="outline" size="sm" className="w-full" onClick={() => fileInputRef.current?.click()}>
-                    <Upload className="w-4 h-4 me-1" />
-                    {lang === 'ar' ? 'تغيير الصورة' : 'Change Image'}
-                  </Button>
                 </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  className="w-full h-24 border-dashed border-2 flex-col gap-2"
-                  onClick={() => fileInputRef.current?.click()}
+                <button
+                  onClick={() => setUseBundle(!useBundle)}
+                  className={`w-full px-4 py-3 rounded-xl text-sm font-medium border-2 transition-colors ${
+                    useBundle
+                      ? 'bg-secondary text-secondary-foreground border-secondary'
+                      : 'bg-card text-foreground border-border hover:border-secondary'
+                  }`}
                 >
-                  <Upload className="w-6 h-6 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
-                    {lang === 'ar' ? 'ارفع لقطة شاشة InstaPay' : 'Upload InstaPay Screenshot'}
+                  {useBundle
+                    ? (lang === 'ar' ? '✓ سيتم الخصم من الباقة' : '✓ Using bundle ride')
+                    : (lang === 'ar' ? 'استخدم رحلة من الباقة' : 'Use a bundle ride')}
+                </button>
+              </div>
+            )}
+
+            {/* Available Bundles */}
+            {availableBundles.length > 0 && !activeBundlePurchase && (
+              <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+                <button
+                  onClick={() => setShowBundleSection(!showBundleSection)}
+                  className="w-full flex items-center justify-between"
+                >
+                  <h3 className="font-semibold text-foreground flex items-center gap-2">
+                    <Package className="w-4 h-4 text-secondary" />
+                    {lang === 'ar' ? 'باقات مخفضة' : 'Discounted Bundles'}
+                  </h3>
+                  <span className="text-xs text-secondary font-medium">
+                    {lang === 'ar' ? `وفّر حتى ${Math.max(...availableBundles.map((b: any) => b.discount_percentage))}%` : `Save up to ${Math.max(...availableBundles.map((b: any) => b.discount_percentage))}%`}
                   </span>
-                </Button>
-              )}
-            </div>
+                </button>
+
+                {showBundleSection && (
+                  <div className="space-y-3 pt-2">
+                    {availableBundles.map((bundle: any) => {
+                      const singlePrice = selectedRide.routes?.price || 0;
+                      const bundlePricePerRide = bundle.price / bundle.ride_count;
+                      const savings = (singlePrice * bundle.ride_count) - bundle.price;
+                      return (
+                        <div key={bundle.id} className="bg-surface rounded-xl p-4 border border-border space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-bold text-foreground">
+                                {bundle.bundle_type === 'weekly'
+                                  ? (lang === 'ar' ? 'باقة أسبوعية' : 'Weekly Bundle')
+                                  : (lang === 'ar' ? 'باقة شهرية' : 'Monthly Bundle')}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {bundle.ride_count} {lang === 'ar' ? 'رحلة' : 'rides'}
+                              </p>
+                            </div>
+                            <div className="text-end">
+                              <p className="text-xl font-bold text-primary">{bundle.price} EGP</p>
+                              <p className="text-xs text-muted-foreground line-through">{singlePrice * bundle.ride_count} EGP</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="bg-secondary/10 text-secondary font-medium px-2 py-1 rounded-full">
+                              {lang === 'ar' ? `وفّر ${savings} جنيه` : `Save ${savings} EGP`}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {lang === 'ar' ? `${bundlePricePerRide.toFixed(0)} جنيه/رحلة` : `${bundlePricePerRide.toFixed(0)} EGP/ride`}
+                            </span>
+                          </div>
+                          <Button
+                            className="w-full"
+                            variant="secondary"
+                            size="sm"
+                            disabled={loading || !paymentProof}
+                            onClick={() => handleBuyBundle(bundle)}
+                          >
+                            <Package className="w-4 h-4 me-1" />
+                            {lang === 'ar' ? 'شراء الباقة' : 'Buy Bundle'}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                    <p className="text-xs text-muted-foreground text-center">
+                      {lang === 'ar' ? 'ارفع إثبات الدفع أدناه ثم اضغط "شراء الباقة"' : 'Upload payment proof below then click "Buy Bundle"'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* InstaPay Payment — hidden when using bundle */}
+            {!useBundle && (
+              <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+                <h3 className="font-semibold text-foreground flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-primary" />
+                  {lang === 'ar' ? 'الدفع عبر InstaPay' : 'Pay via InstaPay'}
+                </h3>
+                <div className="bg-surface rounded-xl p-4 text-sm text-muted-foreground space-y-2">
+                  <p>{lang === 'ar' ? 'حوّل المبلغ عبر InstaPay ثم ارفع لقطة شاشة للتحويل:' : 'Transfer the amount via InstaPay then upload a screenshot:'}</p>
+                  <p className="font-bold text-foreground text-lg">{selectedRide.routes?.price} EGP</p>
+                  {instapayPhone && (
+                    <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-3 mt-2">
+                      <Phone className="w-5 h-5 text-primary shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'حوّل إلى هذا الرقم:' : 'Transfer to this number:'}</p>
+                        <p className="font-bold text-foreground text-lg font-mono" dir="ltr">{instapayPhone}</p>
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-xs">{lang === 'ar' ? 'سيتم مراجعة الدفع من قبل المسؤول' : 'Payment will be reviewed by admin'}</p>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePaymentFile}
+                />
+
+                {paymentPreview ? (
+                  <div className="space-y-2">
+                    <img src={paymentPreview} alt="Payment proof" className="w-full h-48 object-contain rounded-lg border border-border bg-muted" />
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => fileInputRef.current?.click()}>
+                      <Upload className="w-4 h-4 me-1" />
+                      {lang === 'ar' ? 'تغيير الصورة' : 'Change Image'}
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full h-24 border-dashed border-2 flex-col gap-2"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="w-6 h-6 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {lang === 'ar' ? 'ارفع لقطة شاشة InstaPay' : 'Upload InstaPay Screenshot'}
+                    </span>
+                  </Button>
+                )}
+              </div>
+            )}
 
             {/* Summary & Book */}
             <div className="bg-card border border-border rounded-2xl p-5">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-muted-foreground">{lang === 'ar' ? 'مقعد واحد' : '1 Seat'}</span>
-                <span className="text-lg font-bold text-primary">{selectedRide.routes?.price} EGP</span>
+                {useBundle ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground line-through">{selectedRide.routes?.price} EGP</span>
+                    <span className="text-lg font-bold text-secondary">{lang === 'ar' ? 'من الباقة' : 'Bundle'}</span>
+                  </div>
+                ) : (
+                  <span className="text-lg font-bold text-primary">{selectedRide.routes?.price} EGP</span>
+                )}
               </div>
 
               {!isRideFull ? (
                 <Button className="w-full mt-3" size="lg" onClick={() => handleBook(false)}
-                  disabled={loading || !isPickupValid || !isDropoffValid || !paymentProof}>
+                  disabled={loading || !isPickupValid || !isDropoffValid || (!useBundle && !paymentProof)}>
                   {loading ? (
                     <><Loader2 className="w-4 h-4 me-1 animate-spin" />{lang === 'ar' ? 'جاري الحجز...' : 'Booking...'}</>
+                  ) : useBundle ? (
+                    <><Package className="w-4 h-4 me-1" />{lang === 'ar' ? 'احجز من الباقة' : 'Book from Bundle'}</>
                   ) : (
                     lang === 'ar' ? 'تأكيد الحجز' : 'Confirm Booking'
                   )}
