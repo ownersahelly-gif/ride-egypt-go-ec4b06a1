@@ -477,6 +477,11 @@ const ActiveRide = () => {
               )
             ) : (
               <div className="flex items-center gap-2">
+                {currentStopIndex > 0 && (
+                  <Button variant="outline" onClick={goToPreviousStop} title={lang === 'ar' ? 'رجوع' : 'Previous'}>
+                    <Undo2 className="w-4 h-4" />
+                  </Button>
+                )}
                 <Button className="flex-1" variant="outline" onClick={() => markDroppedOff(currentStop.bookingId)}>
                   <DropOff className="w-4 h-4 me-2" />
                   {lang === 'ar' ? 'تأكيد الإنزال' : 'Confirm Drop-off'}
