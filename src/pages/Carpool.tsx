@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import PlacesAutocomplete from '@/components/PlacesAutocomplete';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -81,7 +82,11 @@ const Carpool = () => {
   const [myRequests, setMyRequests] = useState<any[]>([]);
   const [verification, setVerification] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [searchFrom, setSearchFrom] = useState('');
+  const [searchTo, setSearchTo] = useState('');
+  const [searchFromCoords, setSearchFromCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [searchToCoords, setSearchToCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const PROXIMITY_RADIUS_KM = 15;
   const [tab, setTab] = useState<'browse' | 'my-rides' | 'my-routes'>('browse');
   const [browseMode, setBrowseMode] = useState<'list' | 'map'>('list');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -165,9 +170,17 @@ const Carpool = () => {
 
   const filteredRoutes = routes.filter(r => {
     if (r.user_id === user?.id) return false;
-    if (search) {
-      const s = search.toLowerCase();
-      if (!r.origin_name?.toLowerCase().includes(s) && !r.destination_name?.toLowerCase().includes(s)) return false;
+    if (searchFromCoords) {
+      const dist = getDistanceKm(searchFromCoords.lat, searchFromCoords.lng, r.origin_lat, r.origin_lng);
+      if (dist > PROXIMITY_RADIUS_KM) return false;
+    } else if (searchFrom) {
+      if (!r.origin_name?.toLowerCase().includes(searchFrom.toLowerCase())) return false;
+    }
+    if (searchToCoords) {
+      const dist = getDistanceKm(searchToCoords.lat, searchToCoords.lng, r.destination_lat, r.destination_lng);
+      if (dist > PROXIMITY_RADIUS_KM) return false;
+    } else if (searchTo) {
+      if (!r.destination_name?.toLowerCase().includes(searchTo.toLowerCase())) return false;
     }
     if (filterTime) {
       const routeHour = parseInt(r.departure_time?.slice(0, 2) || '0');
@@ -199,11 +212,17 @@ const Carpool = () => {
   const myRoutes = routes.filter(r => r.user_id === user?.id);
 
   const mapMarkers = sortedRoutes.flatMap(r => [
-    { lat: r.origin_lat, lng: r.origin_lng, label: r.origin_name?.slice(0, 15), color: 'green' as const },
-    { lat: r.destination_lat, lng: r.destination_lng, label: r.destination_name?.slice(0, 15), color: 'red' as const },
+    { lat: r.origin_lat, lng: r.origin_lng, label: r.origin_name?.split(',')[0]?.slice(0, 12) || '', color: 'green' as const },
+    { lat: r.destination_lat, lng: r.destination_lng, label: r.destination_name?.split(',')[0]?.slice(0, 12) || '', color: 'red' as const },
   ]);
 
-  const hasActiveFilters = !!filterTime || (!!filterDay && filterDay !== 'any');
+  const mapConnectionLines = sortedRoutes.map(r => ({
+    from: { lat: r.origin_lat, lng: r.origin_lng },
+    to: { lat: r.destination_lat, lng: r.destination_lng },
+    color: '#3B82F6',
+  }));
+
+  const hasActiveFilters = !!filterTime || (!!filterDay && filterDay !== 'any') || !!searchFromCoords || !!searchToCoords;
 
   if (!user) return null;
 
@@ -271,31 +290,55 @@ const Carpool = () => {
       <div className="p-4 space-y-4">
         {tab === 'browse' && (
           <>
-            {/* Search + Filter + Sort + View Toggle */}
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  className="pl-10"
-                  placeholder={lang === 'ar' ? 'ابحث عن موقع...' : 'Search locations...'}
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
+            {/* Search From / To */}
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <div className="flex-1 space-y-2">
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-green-500 z-10" />
+                    <PlacesAutocomplete
+                      placeholder={lang === 'ar' ? 'من أين؟' : 'From where?'}
+                      onSelect={(place) => { setSearchFrom(place.name); setSearchFromCoords({ lat: place.lat, lng: place.lng }); }}
+                      className="pl-9"
+                    />
+                    {searchFromCoords && (
+                      <button className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-10" onClick={() => { setSearchFrom(''); setSearchFromCoords(null); }}>
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-destructive z-10" />
+                    <PlacesAutocomplete
+                      placeholder={lang === 'ar' ? 'إلى أين؟' : 'To where?'}
+                      onSelect={(place) => { setSearchTo(place.name); setSearchToCoords({ lat: place.lat, lng: place.lng }); }}
+                      className="pl-9"
+                    />
+                    {searchToCoords && (
+                      <button className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-10" onClick={() => { setSearchTo(''); setSearchToCoords(null); }}>
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button variant={hasActiveFilters ? 'default' : 'outline'} size="icon" onClick={() => setShowFilters(!showFilters)}>
+                    <Filter className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" onClick={() => setBrowseMode(browseMode === 'list' ? 'map' : 'list')}>
+                    {browseMode === 'list' ? <Map className="w-4 h-4" /> : <List className="w-4 h-4" />}
+                  </Button>
+                </div>
               </div>
-              <Button
-                variant={hasActiveFilters ? 'default' : 'outline'}
-                size="icon"
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <Filter className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setBrowseMode(browseMode === 'list' ? 'map' : 'list')}
-              >
-                {browseMode === 'list' ? <Map className="w-4 h-4" /> : <List className="w-4 h-4" />}
-              </Button>
+              {(searchFromCoords || searchToCoords) && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Navigation className="w-3 h-3" />
+                  <span>{lang === 'ar' ? `عرض الرحلات ضمن ${PROXIMITY_RADIUS_KM} كم` : `Showing rides within ${PROXIMITY_RADIUS_KM}km`}</span>
+                  <Button variant="ghost" size="sm" className="h-5 px-2 text-xs" onClick={() => { setSearchFrom(''); setSearchTo(''); setSearchFromCoords(null); setSearchToCoords(null); }}>
+                    {lang === 'ar' ? 'مسح' : 'Clear'}
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Filter & Sort Panel */}
@@ -305,7 +348,7 @@ const Carpool = () => {
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">{lang === 'ar' ? 'تصفية وترتيب' : 'Filter & Sort'}</p>
                     {hasActiveFilters && (
-                      <Button variant="ghost" size="sm" onClick={() => { setFilterTime(''); setFilterDay(''); }}>
+                      <Button variant="ghost" size="sm" onClick={() => { setFilterTime(''); setFilterDay(''); setSearchFrom(''); setSearchTo(''); setSearchFromCoords(null); setSearchToCoords(null); }}>
                         <X className="w-3 h-3 mr-1" />{lang === 'ar' ? 'مسح' : 'Clear'}
                       </Button>
                     )}
@@ -375,7 +418,13 @@ const Carpool = () => {
             {/* Map View */}
             {browseMode === 'map' && (
               <div className="h-80 rounded-xl overflow-hidden border border-border">
-                <MapView markers={mapMarkers} zoom={10} showUserLocation />
+                <MapView
+                  markers={mapMarkers}
+                  connectionLines={mapConnectionLines}
+                  zoom={10}
+                  showUserLocation
+                  center={searchFromCoords || searchToCoords || undefined}
+                />
               </div>
             )}
 
