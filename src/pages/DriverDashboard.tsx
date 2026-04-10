@@ -536,11 +536,11 @@ const DriverDashboard = () => {
                                       {s.return_time && <><ArrowRight className="w-3 h-3 text-muted-foreground" /><span className="text-muted-foreground">{s.return_time?.slice(0, 5)}</span></>}
                                     </div>
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full" title={lang === 'ar' ? 'ذهاب' : 'Going'}>
-                                        → {goCount}
+                                      <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
+                                        {lang === 'ar' ? `ذهاب ${goCount}` : `Go ${goCount}`}
                                       </span>
-                                      <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full" title={lang === 'ar' ? 'عودة' : 'Return'}>
-                                        ← {returnCount}
+                                      <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">
+                                        {lang === 'ar' ? `عودة ${returnCount}` : `Back ${returnCount}`}
                                       </span>
                                     </div>
                                   </div>
@@ -556,6 +556,8 @@ const DriverDashboard = () => {
                                 </p>
                                 {routeBookings.slice(0, 5).map(b => {
                                   const passenger = passengerProfiles[b.user_id];
+                                  const dirLabel = b.trip_direction === 'go' ? (lang === 'ar' ? 'ذهاب' : 'Go') : b.trip_direction === 'return' ? (lang === 'ar' ? 'عودة' : 'Back') : (lang === 'ar' ? 'ذهاب+عودة' : 'Round');
+                                  const dirColor = b.trip_direction === 'go' ? 'bg-green-100 text-green-700' : b.trip_direction === 'return' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700';
                                   return (
                                     <div key={b.id} className="flex items-center justify-between bg-surface rounded-xl px-3 py-2">
                                       <div className="flex items-center gap-2">
@@ -565,7 +567,10 @@ const DriverDashboard = () => {
                                           <p className="text-[10px] text-muted-foreground">{dayNames[new Date(b.scheduled_date).getDay()]} · {b.scheduled_time?.slice(0, 5)} · {b.seats} {t('booking.seat')}</p>
                                         </div>
                                       </div>
-                                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${statusColors[b.status]}`}>{t(`booking.status.${b.status}`)}</span>
+                                      <div className="flex items-center gap-1.5">
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${dirColor}`}>{dirLabel}</span>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${statusColors[b.status]}`}>{t(`booking.status.${b.status}`)}</span>
+                                      </div>
                                     </div>
                                   );
                                 })}
@@ -576,7 +581,7 @@ const DriverDashboard = () => {
                                 )}
                               </div>
                             )}
-                            <Button variant="outline" size="sm" onClick={() => { setTab('schedule'); openScheduleForRoute(allRoutes.find(r => r.id === routeId) || routeInfo); }}>
+                            <Button variant="outline" size="sm" onClick={() => { setTab('schedule'); openScheduleForRoute(allRoutes.find(r => r.id === routeId) || routeInfo); }} className="w-full">
                               <Calendar className="w-3.5 h-3.5 me-1" />{lang === 'ar' ? 'تعديل الجدول' : 'Edit Schedule'}
                             </Button>
                           </div>
@@ -845,7 +850,13 @@ const DriverDashboard = () => {
                 if (!grouped[key]) grouped[key] = [];
                 grouped[key].push(b);
               });
-              const sortedKeys = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+              const sortedKeys = Object.keys(grouped).sort((a, b) => {
+                // Sort by date ascending, then time ascending
+                const [dateA, , timeA] = a.split('__');
+                const [dateB, , timeB] = b.split('__');
+                if (dateA !== dateB) return dateA.localeCompare(dateB);
+                return (timeA || '').localeCompare(timeB || '');
+              });
 
               return (
                 <div className="space-y-3">
@@ -870,7 +881,8 @@ const DriverDashboard = () => {
                             <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                               <span>{first.scheduled_date}</span>
                               <span>{first.scheduled_time?.slice(0, 5)}</span>
-                              <span>{activeBookings.length} {lang === 'ar' ? 'راكب' : 'riders'}</span>
+                              <span>{activeBookings.filter((b: any) => b.trip_direction === 'go' || b.trip_direction === 'both').length} {lang === 'ar' ? 'ذهاب' : 'go'}</span>
+                              <span>{activeBookings.filter((b: any) => b.trip_direction === 'return' || b.trip_direction === 'both').length} {lang === 'ar' ? 'عودة' : 'back'}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -905,12 +917,15 @@ const DriverDashboard = () => {
                                   <div key={b.id} className="flex items-center justify-between bg-surface rounded-xl px-4 py-3">
                                     <div className="flex items-center gap-3">
                                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"><User className="w-4 h-4 text-primary" /></div>
-                                      <div>
-                                        <p className="text-sm font-medium text-foreground">{name}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                          {b.custom_pickup_name && <><MapPin className="w-3 h-3 inline text-green-500" /> {b.custom_pickup_name}</>}
-                                        </p>
-                                      </div>
+                                        <div>
+                                          <p className="text-sm font-medium text-foreground">{name}</p>
+                                          <p className="text-xs text-muted-foreground">
+                                            {b.custom_pickup_name && <><MapPin className="w-3 h-3 inline text-green-500" /> {b.custom_pickup_name} · </>}
+                                            <span className={`${b.trip_direction === 'go' ? 'text-green-600' : b.trip_direction === 'return' ? 'text-blue-600' : 'text-purple-600'}`}>
+                                              {b.trip_direction === 'go' ? (lang === 'ar' ? 'ذهاب' : 'Going') : b.trip_direction === 'return' ? (lang === 'ar' ? 'عودة' : 'Return') : (lang === 'ar' ? 'ذهاب+عودة' : 'Round Trip')}
+                                            </span>
+                                          </p>
+                                        </div>
                                     </div>
                                     <Button size="sm" variant="ghost" onClick={() => { setChatBookingId(b.id); setChatPassengerName(name); }}>
                                       <MessageCircle className="w-4 h-4 text-primary" />
