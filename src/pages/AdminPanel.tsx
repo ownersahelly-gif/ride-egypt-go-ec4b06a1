@@ -15,7 +15,7 @@ import {
   Loader2, Eye, Database, Settings, Phone, Package
 } from 'lucide-react';
 
-type AdminTab = 'routes' | 'drivers' | 'shuttles' | 'bookings' | 'analytics' | 'approvals' | 'settings';
+type AdminTab = 'routes' | 'drivers' | 'shuttles' | 'bookings' | 'analytics' | 'approvals' | 'settings' | 'carpool';
 
 const AdminPanel = () => {
   const { user, signOut } = useAuth();
@@ -32,6 +32,8 @@ const AdminPanel = () => {
 
   // Bundle management
   const [bundles, setBundles] = useState<any[]>([]);
+  const [carpoolVerifications, setCarpoolVerifications] = useState<any[]>([]);
+  const [carpoolProfiles, setCarpoolProfiles] = useState<Record<string, any>>({});
   const [showBundleForm, setShowBundleForm] = useState(false);
   const [bundleForm, setBundleForm] = useState({ route_id: '', bundle_type: 'weekly', ride_count: 10, price: 200, discount_percentage: 15 });
   const [savingBundle, setSavingBundle] = useState(false);
@@ -67,17 +69,28 @@ const AdminPanel = () => {
   }, [user]);
 
   const fetchAllData = async () => {
-    const [routesRes, appsRes, shuttlesRes, bookingsRes, settingsRes, bundlesRes] = await Promise.all([
+    const [routesRes, appsRes, shuttlesRes, bookingsRes, settingsRes, bundlesRes, carpoolVerRes] = await Promise.all([
       supabase.from('routes').select('*').order('created_at', { ascending: false }),
       supabase.from('driver_applications').select('*').order('created_at', { ascending: false }),
       supabase.from('shuttles').select('*, routes(name_en, name_ar)').order('created_at', { ascending: false }),
       supabase.from('bookings').select('*, routes(name_en, name_ar)').order('created_at', { ascending: true }).limit(200),
       supabase.from('app_settings').select('*').eq('key', 'instapay_phone').single(),
       supabase.from('ride_bundles').select('*, routes(name_en, name_ar)').order('created_at', { ascending: false }),
+      supabase.from('carpool_verifications').select('*').order('created_at', { ascending: false }),
     ]);
 
     if (settingsRes.data) setInstapayPhone(settingsRes.data.value);
     setBundles(bundlesRes.data || []);
+    const cvs = carpoolVerRes.data || [];
+    setCarpoolVerifications(cvs);
+    // Fetch profiles for carpool verifications
+    const cvUserIds = [...new Set(cvs.map((v: any) => v.user_id))];
+    if (cvUserIds.length > 0) {
+      const { data: cvProfs } = await supabase.from('profiles').select('user_id, full_name, phone').in('user_id', cvUserIds);
+      const cvMap: Record<string, any> = {};
+      (cvProfs || []).forEach((p: any) => { cvMap[p.user_id] = p; });
+      setCarpoolProfiles(cvMap);
+    }
 
     setRoutes(routesRes.data || []);
     setApplications(appsRes.data || []);
@@ -336,12 +349,22 @@ const AdminPanel = () => {
   const tabs: { key: AdminTab; icon: any; label: string }[] = [
     { key: 'analytics', icon: BarChart3, label: lang === 'ar' ? 'التحليلات' : 'Analytics' },
     { key: 'approvals', icon: CheckCircle2, label: lang === 'ar' ? 'الموافقات' : 'Approvals' },
+    { key: 'carpool', icon: Car, label: lang === 'ar' ? 'مشاركة الرحلات' : 'Carpool' },
     { key: 'routes', icon: Route, label: lang === 'ar' ? 'المسارات' : 'Routes' },
     { key: 'drivers', icon: Users, label: lang === 'ar' ? 'السائقين' : 'Drivers' },
     { key: 'shuttles', icon: Car, label: lang === 'ar' ? 'الشاتلات' : 'Shuttles' },
     { key: 'bookings', icon: Ticket, label: lang === 'ar' ? 'الحجوزات' : 'Bookings' },
     { key: 'settings', icon: Settings, label: lang === 'ar' ? 'الإعدادات' : 'Settings' },
   ];
+
+  const handleCarpoolVerification = async (verificationId: string, status: 'approved' | 'rejected', adminNotes?: string) => {
+    const { error } = await supabase.from('carpool_verifications').update({ status, admin_notes: adminNotes || null }).eq('id', verificationId);
+    if (error) { toast.error(error.message); return; }
+    toast.success(status === 'approved'
+      ? (lang === 'ar' ? 'تم قبول التحقق' : 'Verification approved')
+      : (lang === 'ar' ? 'تم رفض التحقق' : 'Verification rejected'));
+    fetchAllData();
+  };
 
   const statusColors: Record<string, string> = {
     active: 'bg-green-100 text-green-700',
@@ -805,6 +828,62 @@ const AdminPanel = () => {
                       {b.boarding_code && <p className="text-xs text-muted-foreground font-mono">Code: {b.boarding_code}</p>}
                     </div>
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColors[b.status]}`}>{b.status}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Carpool Verifications Tab */}
+        {tab === 'carpool' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-foreground">{lang === 'ar' ? 'طلبات التحقق - مشاركة الرحلات' : 'Carpool Verifications'}</h2>
+
+            {carpoolVerifications.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                {lang === 'ar' ? 'لا توجد طلبات تحقق' : 'No verification requests'}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {carpoolVerifications.map(v => (
+                  <div key={v.id} className="bg-card border border-border rounded-xl p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="font-bold text-foreground">{carpoolProfiles[v.user_id]?.full_name || 'User'}</p>
+                        <p className="text-xs text-muted-foreground">{carpoolProfiles[v.user_id]?.phone || ''}</p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        v.status === 'approved' ? 'bg-green-100 text-green-700' :
+                        v.status === 'rejected' ? 'bg-destructive/10 text-destructive' :
+                        'bg-secondary/20 text-secondary'
+                      }`}>{v.status}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+                      <div><span className="text-muted-foreground">{lang === 'ar' ? 'اللوحة:' : 'Plate:'}</span> <span className="font-medium">{v.license_plate}</span></div>
+                      <div><span className="text-muted-foreground">{lang === 'ar' ? 'السيارة:' : 'Vehicle:'}</span> <span className="font-medium">{v.vehicle_model}</span></div>
+                    </div>
+
+                    {/* Document Links */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {v.id_front_url && <a href={v.id_front_url} target="_blank" rel="noopener noreferrer" className="text-xs bg-muted px-2 py-1 rounded hover:bg-muted-foreground/10">{lang === 'ar' ? 'بطاقة أمام' : 'ID Front'}</a>}
+                      {v.id_back_url && <a href={v.id_back_url} target="_blank" rel="noopener noreferrer" className="text-xs bg-muted px-2 py-1 rounded hover:bg-muted-foreground/10">{lang === 'ar' ? 'بطاقة خلف' : 'ID Back'}</a>}
+                      {v.driving_license_url && <a href={v.driving_license_url} target="_blank" rel="noopener noreferrer" className="text-xs bg-muted px-2 py-1 rounded hover:bg-muted-foreground/10">{lang === 'ar' ? 'رخصة قيادة' : 'Driving License'}</a>}
+                      {v.car_license_url && <a href={v.car_license_url} target="_blank" rel="noopener noreferrer" className="text-xs bg-muted px-2 py-1 rounded hover:bg-muted-foreground/10">{lang === 'ar' ? 'رخصة سيارة' : 'Car License'}</a>}
+                      {v.selfie_url && <a href={v.selfie_url} target="_blank" rel="noopener noreferrer" className="text-xs bg-muted px-2 py-1 rounded hover:bg-muted-foreground/10">{lang === 'ar' ? 'صورة شخصية' : 'Selfie'}</a>}
+                    </div>
+
+                    {v.status === 'pending' && (
+                      <div className="flex gap-2">
+                        <Button size="sm" className="flex-1" onClick={() => handleCarpoolVerification(v.id, 'approved')}>
+                          <CheckCircle2 className="w-4 h-4 me-1" />{lang === 'ar' ? 'موافقة' : 'Approve'}
+                        </Button>
+                        <Button size="sm" variant="outline" className="flex-1" onClick={() => handleCarpoolVerification(v.id, 'rejected')}>
+                          <XCircle className="w-4 h-4 me-1" />{lang === 'ar' ? 'رفض' : 'Reject'}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
