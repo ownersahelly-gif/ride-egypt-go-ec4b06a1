@@ -703,34 +703,39 @@ const DriverDashboard = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>{lang === 'ar' ? 'نوع الرحلة' : 'Trip Type'}</Label>
-                      <div className="flex gap-2">
-                        {([
-                          { value: 'both', labelAr: 'ذهاب وعودة', labelEn: 'Both' },
-                          { value: 'go', labelAr: 'ذهاب فقط', labelEn: 'Going Only' },
-                          { value: 'return', labelAr: 'عودة فقط', labelEn: 'Return Only' },
-                        ] as const).map(opt => (
-                          <button key={opt.value} onClick={() => setScheduleForm(p => ({ ...p, trip_direction: opt.value }))}
-                            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                              scheduleForm.trip_direction === opt.value ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border'
-                            }`}>{lang === 'ar' ? opt.labelAr : opt.labelEn}</button>
+                      <Label>{lang === 'ar' ? 'أوقات الرحلات' : 'Trip Time Slots'}</Label>
+                      <div className="space-y-2">
+                        {scheduleForm.timeSlots.map((slot, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <select
+                              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                              value={slot.direction}
+                              onChange={e => {
+                                const updated = [...scheduleForm.timeSlots];
+                                updated[idx] = { ...updated[idx], direction: e.target.value as 'go' | 'return' };
+                                setScheduleForm(p => ({ ...p, timeSlots: updated }));
+                              }}>
+                              <option value="go">{lang === 'ar' ? '→ ذهاب' : '→ Going'}</option>
+                              <option value="return">{lang === 'ar' ? '← عودة' : '← Return'}</option>
+                            </select>
+                            <Input type="time" value={slot.time} className="flex-1"
+                              onChange={e => {
+                                const updated = [...scheduleForm.timeSlots];
+                                updated[idx] = { ...updated[idx], time: e.target.value };
+                                setScheduleForm(p => ({ ...p, timeSlots: updated }));
+                              }} />
+                            {scheduleForm.timeSlots.length > 1 && (
+                              <button onClick={() => setScheduleForm(p => ({ ...p, timeSlots: p.timeSlots.filter((_, i) => i !== idx) }))}
+                                className="text-destructive/60 hover:text-destructive p-1"><Trash2 className="w-4 h-4" /></button>
+                            )}
+                          </div>
                         ))}
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      {scheduleForm.trip_direction !== 'return' && (
-                        <div className="space-y-1">
-                          <Label className="text-xs">{lang === 'ar' ? 'ذهاب' : 'Departure'}</Label>
-                          <Input type="time" value={scheduleForm.departure_time} onChange={e => setScheduleForm(p => ({ ...p, departure_time: e.target.value }))} />
-                        </div>
-                      )}
-                      {scheduleForm.trip_direction !== 'go' && (
-                        <div className="space-y-1">
-                          <Label className="text-xs">{lang === 'ar' ? 'عودة' : 'Return'}</Label>
-                          <Input type="time" value={scheduleForm.return_time} onChange={e => setScheduleForm(p => ({ ...p, return_time: e.target.value }))} />
-                        </div>
-                      )}
+                      <button
+                        onClick={() => setScheduleForm(p => ({ ...p, timeSlots: [...p.timeSlots, { direction: 'go', time: '12:00' }] }))}
+                        className="text-xs text-primary hover:underline flex items-center gap-1">
+                        <Plus className="w-3 h-3" />{lang === 'ar' ? 'إضافة وقت آخر' : 'Add another time slot'}
+                      </button>
                     </div>
 
                     <div className="space-y-1">
