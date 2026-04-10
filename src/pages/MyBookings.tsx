@@ -181,7 +181,14 @@ const MyBookings = () => {
               return (
                 <div key={booking.id} className="bg-card border border-border rounded-xl p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-foreground">{lang === 'ar' ? booking.routes?.name_ar : booking.routes?.name_en}</h3>
+                    <div>
+                      <h3 className="font-semibold text-foreground">{lang === 'ar' ? booking.routes?.name_ar : booking.routes?.name_en}</h3>
+                      {booking.trip_direction && booking.trip_direction !== 'both' && (
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${booking.trip_direction === 'go' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {booking.trip_direction === 'go' ? (lang === 'ar' ? '🚀 ذهاب' : '🚀 Go') : (lang === 'ar' ? '🔄 عودة' : '🔄 Return')}
+                        </span>
+                      )}
+                    </div>
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColors[booking.status] || ''}`}>
                       {booking.status === 'boarded' 
                         ? (lang === 'ar' ? 'في الشاتل' : 'On Board')
