@@ -360,10 +360,10 @@ const TrackShuttle = () => {
         </div>
       </header>
 
-      {/* Map */}
-      <div className="flex-1 relative" style={{ minHeight: '40vh' }}>
+      {/* Map — fixed height */}
+      <div className="relative" style={{ height: '45vh', minHeight: '280px' }}>
         {(!shuttle?.current_lat || !shuttle?.current_lng) && !loading ? (
-          <div className="h-full min-h-[350px] bg-muted flex flex-col items-center justify-center text-center p-6">
+          <div className="h-full bg-muted flex flex-col items-center justify-center text-center p-6">
             <Car className="w-16 h-16 text-muted-foreground/40 mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-1">
               {lang === 'ar' ? 'الرحلة لم تبدأ بعد' : 'Ride hasn\'t started yet'}
@@ -376,7 +376,7 @@ const TrackShuttle = () => {
           </div>
         ) : (
           <MapView
-            className="h-full min-h-[350px]"
+            className="h-full w-full"
             markers={markers}
             origin={route ? { lat: route.origin_lat, lng: route.origin_lng } : undefined}
             destination={route ? { lat: route.destination_lat, lng: route.destination_lng } : undefined}
@@ -387,288 +387,284 @@ const TrackShuttle = () => {
           />
         )}
 
-        {/* ETA Floating Card */}
-        {booking && !loading && (
-          <div className="absolute bottom-0 left-0 right-0 p-3">
-            <div className="bg-card border border-border rounded-2xl shadow-lg max-w-lg mx-auto overflow-hidden">
-              {/* ETA Banner */}
-              {etaMinutes !== null && !isBoarded && (
-                <div className="bg-primary px-5 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Navigation className="w-5 h-5 text-primary-foreground" />
-                    <div>
-                      <p className="text-primary-foreground font-bold text-lg leading-tight">
-                        {etaMinutes} {lang === 'ar' ? 'دقيقة' : 'min'}
-                      </p>
-                      <p className="text-primary-foreground/80 text-xs">
-                        {lang === 'ar' ? 'الوقت المتوقع للوصول إليك' : 'Estimated arrival to you'}
-                      </p>
-                    </div>
-                  </div>
-                  {stopsBeforeYou > 0 && (
-                    <div className="bg-primary-foreground/20 rounded-lg px-3 py-1.5 text-center">
-                      <p className="text-primary-foreground font-bold text-sm">{stopsBeforeYou}</p>
-                      <p className="text-primary-foreground/80 text-[10px] leading-tight">
-                        {lang === 'ar' ? 'توقفات قبلك' : 'stops before you'}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {isBoarded && (
-                <div className="bg-green-600 px-5 py-3 flex items-center gap-2">
-                  <Car className="w-5 h-5 text-white" />
-                  <p className="text-white font-semibold">
-                    {lang === 'ar' ? 'أنت في الشاتل الآن! استمتع بالرحلة' : "You're on board! Enjoy your ride"}
-                  </p>
-                </div>
-              )}
-
-              <div className="p-4 space-y-3">
-                {/* Route info */}
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-foreground text-sm">
-                    {lang === 'ar' ? route?.name_ar : route?.name_en}
-                  </h3>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    shuttle?.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {shuttle?.status === 'active'
-                      ? (lang === 'ar' ? 'في الطريق' : 'On the way')
-                      : (lang === 'ar' ? 'في الانتظار' : 'Waiting')}
-                  </span>
-                </div>
-
-                {/* Route endpoints */}
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <MapPin className="w-3 h-3 text-green-600 shrink-0" />
-                  <span className="truncate">{lang === 'ar' ? route?.origin_name_ar : route?.origin_name_en}</span>
-                  <ArrowRight className="w-3 h-3 shrink-0" />
-                  <MapPin className="w-3 h-3 text-destructive shrink-0" />
-                  <span className="truncate">{lang === 'ar' ? route?.destination_name_ar : route?.destination_name_en}</span>
-                </div>
-
-                {/* Driver Info */}
-                {(driver || driverApplication) && (
-                  <div className="bg-surface rounded-xl p-3 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-                        {driver?.avatar_url ? (
-                          <img src={driver.avatar_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <Users className="w-5 h-5 text-primary" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground text-sm truncate">{driver?.full_name || (lang === 'ar' ? 'السائق' : 'Driver')}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {driverApplication?.vehicle_model || shuttle?.vehicle_model}
-                          {driverApplication?.vehicle_year ? ` (${driverApplication.vehicle_year})` : ''}
-                          {' · '}
-                          {shuttle?.vehicle_plate}
-                        </p>
-                      </div>
-                      {(driverApplication?.phone || driver?.phone) && (
-                        <a href={`tel:${driverApplication?.phone || driver?.phone}`}>
-                          <Button variant="outline" size="icon" className="rounded-full w-9 h-9">
-                            <Phone className="w-4 h-4" />
-                          </Button>
-                        </a>
-                      )}
-                    </div>
-                    {driverApplication?.license_number && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground ps-[52px]">
-                        <Shield className="w-3 h-3" />
-                        <span>{lang === 'ar' ? 'رخصة:' : 'License:'} {driverApplication.license_number}</span>
-                      </div>
-                    )}
-                    {driverRating && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground ps-[52px]">
-                        <Star className="w-3 h-3 fill-secondary text-secondary" />
-                        <span>{driverRating.avg} ({driverRating.count} {lang === 'ar' ? 'تقييم' : 'ratings'})</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Boarding code */}
-                {booking.boarding_code && !isBoarded && (
-                  <div className="bg-surface rounded-xl p-3 flex items-center gap-3">
-                    <Key className="w-5 h-5 text-primary" />
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                        {lang === 'ar' ? 'رمز الصعود' : 'Boarding Code'}
-                      </p>
-                      <p className="text-xl font-mono font-bold text-foreground tracking-[0.3em]">
-                        {booking.boarding_code}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Schedule */}
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Clock className="w-3 h-3" />
-                  <span>{booking.scheduled_date} · {booking.scheduled_time}</span>
-                  <span className="ms-auto font-semibold text-primary">{booking.total_price} EGP</span>
-                </div>
-
-                {/* Live Stop Timeline */}
-                {passengerStops.length > 0 && (
-                  <div className="border-t border-border pt-3">
-                    <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
-                      <Navigation className="w-3.5 h-3.5 text-primary" />
-                      {lang === 'ar' ? 'مسار الرحلة المباشر' : 'Live Route Progress'}
-                    </p>
-                    <div className="relative">
-                      {/* Vertical line */}
-                      <div className="absolute start-[11px] top-3 bottom-3 w-0.5 bg-border" />
-                      
-                      {/* Route Origin */}
-                      <div className="flex items-center gap-3 mb-1 relative">
-                        <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center z-10 shrink-0">
-                          <MapPin className="w-3 h-3 text-white" />
-                        </div>
-                        <span className="text-xs text-muted-foreground truncate">
-                          {lang === 'ar' ? route?.origin_name_ar : route?.origin_name_en}
-                        </span>
-                      </div>
-
-                      {/* Passenger stops */}
-                      {passengerStops.filter(s => s.type === 'pickup').map((stop, i) => {
-                        const isBoarded = stop.status === 'boarded';
-                        const isSkipped = stop.status === 'cancelled';
-                        const isMe = stop.isCurrentUser;
-                        
-                        // Determine if driver has passed this stop
-                        const shuttleLoc = shuttle?.current_lat && shuttle?.current_lng
-                          ? { lat: shuttle.current_lat, lng: shuttle.current_lng }
-                          : null;
-                        
-                        const routeOrigin = { lat: route?.origin_lat || 0, lng: route?.origin_lng || 0 };
-                        const routeDest = { lat: route?.destination_lat || 0, lng: route?.destination_lng || 0 };
-                        const calcProg = (lat: number, lng: number) => {
-                          const dx = lat - routeOrigin.lat;
-                          const dy = lng - routeOrigin.lng;
-                          const rx = routeDest.lat - routeOrigin.lat;
-                          const ry = routeDest.lng - routeOrigin.lng;
-                          const len2 = rx * rx + ry * ry;
-                          return len2 === 0 ? 0 : (dx * rx + dy * ry) / len2;
-                        };
-                        
-                        const driverProgress = shuttleLoc ? calcProg(shuttleLoc.lat, shuttleLoc.lng) : -1;
-                        const isPassed = isBoarded || (driverProgress > stop.orderIndex && driverProgress >= 0);
-                        const isCurrent = !isPassed && !isSkipped && (
-                          i === 0 || passengerStops.filter(s => s.type === 'pickup').slice(0, i).every(
-                            prev => prev.status === 'boarded' || prev.status === 'cancelled'
-                          )
-                        );
-
-                        return (
-                          <div key={`${stop.userId}-${stop.type}-${i}`} className={`flex items-center gap-3 py-1.5 relative ${isMe ? '' : ''}`}>
-                            {/* Node */}
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center z-10 shrink-0 transition-all ${
-                              isPassed ? 'bg-green-500' :
-                              isSkipped ? 'bg-muted line-through' :
-                              isCurrent ? 'bg-primary ring-4 ring-primary/20 animate-pulse' :
-                              'bg-muted-foreground/20'
-                            }`}>
-                              {isPassed ? (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                              ) : isCurrent ? (
-                                <span className="text-[10px] font-bold text-primary-foreground">📍</span>
-                              ) : (
-                                <span className="text-[10px] font-bold text-muted-foreground">{i + 1}</span>
-                              )}
-                            </div>
-                            {/* Label */}
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-xs font-medium truncate ${
-                                isMe ? 'text-primary font-bold' : 
-                                isPassed ? 'text-muted-foreground' : 'text-foreground'
-                              }`}>
-                                {isMe ? (lang === 'ar' ? '⭐ أنت' : '⭐ You') : stop.name}
-                              </p>
-                              {isMe && stop.boardingCode && !booking?.boarded_at && (
-                                <p className="text-[10px] text-muted-foreground font-mono">
-                                  {lang === 'ar' ? 'رمز:' : 'Code:'} {stop.boardingCode}
-                                </p>
-                              )}
-                            </div>
-                            {/* Status badge */}
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${
-                              isPassed ? 'bg-green-100 text-green-700' :
-                              isSkipped ? 'bg-destructive/10 text-destructive' :
-                              isCurrent ? 'bg-primary/10 text-primary' :
-                              'bg-muted text-muted-foreground'
-                            }`}>
-                              {isPassed ? (lang === 'ar' ? 'صعد ✓' : 'Boarded ✓') :
-                               isSkipped ? (lang === 'ar' ? 'تخطي' : 'Skipped') :
-                               isCurrent ? (lang === 'ar' ? 'التالي' : 'Next') :
-                               (lang === 'ar' ? 'في الانتظار' : 'Waiting')}
-                            </span>
-                          </div>
-                        );
-                      })}
-
-                      {/* Dropoff stops */}
-                      {passengerStops.filter(s => s.type === 'dropoff').length > 0 && (
-                        <div className="my-1.5 ms-9 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
-                          {lang === 'ar' ? '— نزول —' : '— Drop-offs —'}
-                        </div>
-                      )}
-                      {passengerStops.filter(s => s.type === 'dropoff').map((stop, i) => {
-                        const isCompleted = stop.status === 'completed';
-                        const isMe = stop.isCurrentUser;
-                        return (
-                          <div key={`${stop.userId}-dropoff-${i}`} className="flex items-center gap-3 py-1.5 relative">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center z-10 shrink-0 ${
-                              isCompleted ? 'bg-green-500' : 'bg-purple-200 dark:bg-purple-900'
-                            }`}>
-                              {isCompleted ? (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                              ) : (
-                                <span className="text-[10px]">🏁</span>
-                              )}
-                            </div>
-                            <p className={`text-xs flex-1 min-w-0 truncate ${
-                              isMe ? 'text-primary font-bold' : 'text-foreground'
-                            }`}>
-                              {isMe ? (lang === 'ar' ? '⭐ أنت — نزول' : '⭐ You — Drop-off') : `${stop.name} — ${lang === 'ar' ? 'نزول' : 'Drop-off'}`}
-                            </p>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                              isCompleted ? 'bg-green-100 text-green-700' : 'bg-purple-50 text-purple-600 dark:bg-purple-900/50 dark:text-purple-300'
-                            }`}>
-                              {isCompleted ? (lang === 'ar' ? 'تم ✓' : 'Done ✓') : (lang === 'ar' ? 'قادم' : 'Upcoming')}
-                            </span>
-                          </div>
-                        );
-                      })}
-
-                      {/* Route Destination */}
-                      <div className="flex items-center gap-3 mt-1 relative">
-                        <div className="w-6 h-6 rounded-full bg-destructive flex items-center justify-center z-10 shrink-0">
-                          <MapPin className="w-3 h-3 text-white" />
-                        </div>
-                        <span className="text-xs text-muted-foreground truncate">
-                          {lang === 'ar' ? route?.destination_name_ar : route?.destination_name_en}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         {loading && (
           <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
           </div>
         )}
       </div>
+
+      {/* Card below map — full width, scrollable */}
+      {booking && !loading && (
+        <div className="flex-1 overflow-y-auto">
+          <div className="bg-card border-t border-border w-full">
+            {/* ETA Banner */}
+            {etaMinutes !== null && !isBoarded && (
+              <div className="bg-primary px-5 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Navigation className="w-5 h-5 text-primary-foreground" />
+                  <div>
+                    <p className="text-primary-foreground font-bold text-lg leading-tight">
+                      {etaMinutes} {lang === 'ar' ? 'دقيقة' : 'min'}
+                    </p>
+                    <p className="text-primary-foreground/80 text-xs">
+                      {lang === 'ar' ? 'الوقت المتوقع للوصول إليك' : 'Estimated arrival to you'}
+                    </p>
+                  </div>
+                </div>
+                {stopsBeforeYou > 0 && (
+                  <div className="bg-primary-foreground/20 rounded-lg px-3 py-1.5 text-center">
+                    <p className="text-primary-foreground font-bold text-sm">{stopsBeforeYou}</p>
+                    <p className="text-primary-foreground/80 text-[10px] leading-tight">
+                      {lang === 'ar' ? 'توقفات قبلك' : 'stops before you'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isBoarded && (
+              <div className="bg-green-600 px-5 py-3 flex items-center gap-2">
+                <Car className="w-5 h-5 text-white" />
+                <p className="text-white font-semibold">
+                  {lang === 'ar' ? 'أنت في الشاتل الآن! استمتع بالرحلة' : "You're on board! Enjoy your ride"}
+                </p>
+              </div>
+            )}
+
+            <div className="p-4 space-y-3">
+              {/* Route info */}
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-foreground text-sm">
+                  {lang === 'ar' ? route?.name_ar : route?.name_en}
+                </h3>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  shuttle?.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'
+                }`}>
+                  {shuttle?.status === 'active'
+                    ? (lang === 'ar' ? 'في الطريق' : 'On the way')
+                    : (lang === 'ar' ? 'في الانتظار' : 'Waiting')}
+                </span>
+              </div>
+
+              {/* Route endpoints */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <MapPin className="w-3 h-3 text-green-600 shrink-0" />
+                <span className="truncate">{lang === 'ar' ? route?.origin_name_ar : route?.origin_name_en}</span>
+                <ArrowRight className="w-3 h-3 shrink-0" />
+                <MapPin className="w-3 h-3 text-destructive shrink-0" />
+                <span className="truncate">{lang === 'ar' ? route?.destination_name_ar : route?.destination_name_en}</span>
+              </div>
+
+              {/* Driver Info */}
+              {(driver || driverApplication) && (
+                <div className="bg-surface rounded-xl p-3 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                      {driver?.avatar_url ? (
+                        <img src={driver.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <Users className="w-5 h-5 text-primary" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground text-sm truncate">{driver?.full_name || (lang === 'ar' ? 'السائق' : 'Driver')}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {driverApplication?.vehicle_model || shuttle?.vehicle_model}
+                        {driverApplication?.vehicle_year ? ` (${driverApplication.vehicle_year})` : ''}
+                        {' · '}
+                        {shuttle?.vehicle_plate}
+                      </p>
+                    </div>
+                    {(driverApplication?.phone || driver?.phone) && (
+                      <a href={`tel:${driverApplication?.phone || driver?.phone}`}>
+                        <Button variant="outline" size="icon" className="rounded-full w-9 h-9">
+                          <Phone className="w-4 h-4" />
+                        </Button>
+                      </a>
+                    )}
+                  </div>
+                  {driverApplication?.license_number && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground ps-[52px]">
+                      <Shield className="w-3 h-3" />
+                      <span>{lang === 'ar' ? 'رخصة:' : 'License:'} {driverApplication.license_number}</span>
+                    </div>
+                  )}
+                  {driverRating && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground ps-[52px]">
+                      <Star className="w-3 h-3 fill-secondary text-secondary" />
+                      <span>{driverRating.avg} ({driverRating.count} {lang === 'ar' ? 'تقييم' : 'ratings'})</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Boarding code */}
+              {booking.boarding_code && !isBoarded && (
+                <div className="bg-surface rounded-xl p-3 flex items-center gap-3">
+                  <Key className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      {lang === 'ar' ? 'رمز الصعود' : 'Boarding Code'}
+                    </p>
+                    <p className="text-xl font-mono font-bold text-foreground tracking-[0.3em]">
+                      {booking.boarding_code}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Schedule */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                <span>{booking.scheduled_date} · {booking.scheduled_time}</span>
+                <span className="ms-auto font-semibold text-primary">{booking.total_price} EGP</span>
+              </div>
+
+              {/* Live Stop Timeline */}
+              {passengerStops.length > 0 && (
+                <div className="border-t border-border pt-3">
+                  <p className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
+                    <Navigation className="w-3.5 h-3.5 text-primary" />
+                    {lang === 'ar' ? 'مسار الرحلة المباشر' : 'Live Route Progress'}
+                  </p>
+                  <div className="relative">
+                    {/* Vertical line */}
+                    <div className="absolute start-[11px] top-3 bottom-3 w-0.5 bg-border" />
+                    
+                    {/* Route Origin */}
+                    <div className="flex items-center gap-3 mb-1 relative">
+                      <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center z-10 shrink-0">
+                        <MapPin className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {lang === 'ar' ? route?.origin_name_ar : route?.origin_name_en}
+                      </span>
+                    </div>
+
+                    {/* Passenger stops */}
+                    {passengerStops.filter(s => s.type === 'pickup').map((stop, i) => {
+                      const isBoarded = stop.status === 'boarded';
+                      const isSkipped = stop.status === 'cancelled';
+                      const isMe = stop.isCurrentUser;
+                      
+                      const shuttleLoc = shuttle?.current_lat && shuttle?.current_lng
+                        ? { lat: shuttle.current_lat, lng: shuttle.current_lng }
+                        : null;
+                      
+                      const routeOrigin = { lat: route?.origin_lat || 0, lng: route?.origin_lng || 0 };
+                      const routeDest = { lat: route?.destination_lat || 0, lng: route?.destination_lng || 0 };
+                      const calcProg = (lat: number, lng: number) => {
+                        const dx = lat - routeOrigin.lat;
+                        const dy = lng - routeOrigin.lng;
+                        const rx = routeDest.lat - routeOrigin.lat;
+                        const ry = routeDest.lng - routeOrigin.lng;
+                        const len2 = rx * rx + ry * ry;
+                        return len2 === 0 ? 0 : (dx * rx + dy * ry) / len2;
+                      };
+                      
+                      const driverProgress = shuttleLoc ? calcProg(shuttleLoc.lat, shuttleLoc.lng) : -1;
+                      const isPassed = isBoarded || (driverProgress > stop.orderIndex && driverProgress >= 0);
+                      const isCurrent = !isPassed && !isSkipped && (
+                        i === 0 || passengerStops.filter(s => s.type === 'pickup').slice(0, i).every(
+                          prev => prev.status === 'boarded' || prev.status === 'cancelled'
+                        )
+                      );
+
+                      return (
+                        <div key={`${stop.userId}-${stop.type}-${i}`} className="flex items-center gap-3 py-1.5 relative">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center z-10 shrink-0 transition-all ${
+                            isPassed ? 'bg-green-500' :
+                            isSkipped ? 'bg-muted line-through' :
+                            isCurrent ? 'bg-primary ring-4 ring-primary/20 animate-pulse' :
+                            'bg-muted-foreground/20'
+                          }`}>
+                            {isPassed ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                            ) : isCurrent ? (
+                              <span className="text-[10px] font-bold text-primary-foreground">📍</span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-muted-foreground">{i + 1}</span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-medium truncate ${
+                              isMe ? 'text-primary font-bold' : 
+                              isPassed ? 'text-muted-foreground' : 'text-foreground'
+                            }`}>
+                              {isMe ? (lang === 'ar' ? '⭐ أنت' : '⭐ You') : stop.name}
+                            </p>
+                            {isMe && stop.boardingCode && !booking?.boarded_at && (
+                              <p className="text-[10px] text-muted-foreground font-mono">
+                                {lang === 'ar' ? 'رمز:' : 'Code:'} {stop.boardingCode}
+                              </p>
+                            )}
+                          </div>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${
+                            isPassed ? 'bg-green-100 text-green-700' :
+                            isSkipped ? 'bg-destructive/10 text-destructive' :
+                            isCurrent ? 'bg-primary/10 text-primary' :
+                            'bg-muted text-muted-foreground'
+                          }`}>
+                            {isPassed ? (lang === 'ar' ? 'صعد ✓' : 'Boarded ✓') :
+                             isSkipped ? (lang === 'ar' ? 'تخطي' : 'Skipped') :
+                             isCurrent ? (lang === 'ar' ? 'التالي' : 'Next') :
+                             (lang === 'ar' ? 'في الانتظار' : 'Waiting')}
+                          </span>
+                        </div>
+                      );
+                    })}
+
+                    {/* Dropoff stops */}
+                    {passengerStops.filter(s => s.type === 'dropoff').length > 0 && (
+                      <div className="my-1.5 ms-9 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                        {lang === 'ar' ? '— نزول —' : '— Drop-offs —'}
+                      </div>
+                    )}
+                    {passengerStops.filter(s => s.type === 'dropoff').map((stop, i) => {
+                      const isCompleted = stop.status === 'completed';
+                      const isMe = stop.isCurrentUser;
+                      return (
+                        <div key={`${stop.userId}-dropoff-${i}`} className="flex items-center gap-3 py-1.5 relative">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center z-10 shrink-0 ${
+                            isCompleted ? 'bg-green-500' : 'bg-purple-200 dark:bg-purple-900'
+                          }`}>
+                            {isCompleted ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                            ) : (
+                              <span className="text-[10px]">🏁</span>
+                            )}
+                          </div>
+                          <p className={`text-xs flex-1 min-w-0 truncate ${
+                            isMe ? 'text-primary font-bold' : 'text-foreground'
+                          }`}>
+                            {isMe ? (lang === 'ar' ? '⭐ أنت — نزول' : '⭐ You — Drop-off') : `${stop.name} — ${lang === 'ar' ? 'نزول' : 'Drop-off'}`}
+                          </p>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                            isCompleted ? 'bg-green-100 text-green-700' : 'bg-purple-50 text-purple-600 dark:bg-purple-900/50 dark:text-purple-300'
+                          }`}>
+                            {isCompleted ? (lang === 'ar' ? 'تم ✓' : 'Done ✓') : (lang === 'ar' ? 'قادم' : 'Upcoming')}
+                          </span>
+                        </div>
+                      );
+                    })}
+
+                    {/* Route Destination */}
+                    <div className="flex items-center gap-3 mt-1 relative">
+                      <div className="w-6 h-6 rounded-full bg-destructive flex items-center justify-center z-10 shrink-0">
+                        <MapPin className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {lang === 'ar' ? route?.destination_name_ar : route?.destination_name_en}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Chat */}
       <RideChat
