@@ -209,9 +209,11 @@ const TrackShuttle = () => {
   // Calculate ETA — consider whether the trip has started or not
   useEffect(() => {
     if (!booking || !route) return;
+    if (typeof google === 'undefined' || !google?.maps?.DirectionsService) return;
 
     const myPickupLat = booking.custom_pickup_lat ?? route.origin_lat;
     const myPickupLng = booking.custom_pickup_lng ?? route.origin_lng;
+    const myPickup = { lat: myPickupLat, lng: myPickupLng };
 
     // Check if departure is in the future
     const now = new Date();
@@ -227,54 +229,50 @@ const TrackShuttle = () => {
     );
     setStopsBeforeYou(stopsBeforeMe.length);
 
-    // If shuttle has live GPS and trip has started, use Google Directions for accurate ETA
+    const ds = new google.maps.DirectionsService();
+
     if (shuttle?.current_lat && shuttle?.current_lng && msUntilDeparture <= 0) {
-      if (typeof google === 'undefined' || !google?.maps?.DirectionsService) return;
-
-      const shuttleLoc = { lat: shuttle.current_lat, lng: shuttle.current_lng };
-      const myPickup = { lat: myPickupLat, lng: myPickupLng };
-
+      // Trip has started — use live shuttle position
       const waypoints = stopsBeforeMe.map(s => ({
         location: new google.maps.LatLng(s.lat, s.lng),
         stopover: true,
       }));
-
-      const ds = new google.maps.DirectionsService();
-      ds.route(
-        {
-          origin: shuttleLoc,
-          destination: myPickup,
-          waypoints,
-          optimizeWaypoints: false,
-          travelMode: google.maps.TravelMode.DRIVING,
-        },
-        (result, status) => {
-          if (status === 'OK' && result) {
-            let totalSeconds = 0;
-            result.routes[0]?.legs?.forEach(leg => {
-              totalSeconds += leg.duration?.value ?? 0;
-            });
-            totalSeconds += stopsBeforeMe.length * 60;
-            setEtaMinutes(Math.ceil(totalSeconds / 60));
-          }
+      ds.route({
+        origin: { lat: shuttle.current_lat, lng: shuttle.current_lng },
+        destination: myPickup,
+        waypoints,
+        optimizeWaypoints: false,
+        travelMode: google.maps.TravelMode.DRIVING,
+      }, (result, status) => {
+        if (status === 'OK' && result) {
+          let totalSeconds = 0;
+          result.routes[0]?.legs?.forEach(leg => { totalSeconds += leg.duration?.value ?? 0; });
+          totalSeconds += stopsBeforeMe.length * 60;
+          setEtaMinutes(Math.ceil(totalSeconds / 60));
         }
-      );
+      });
     } else {
-      // Trip hasn't started yet — use time until departure + proportional route time
-      const routeDurationMin = route.estimated_duration_minutes || 30;
-      const calcRouteProgressLocal = (point: { lat: number; lng: number }) => {
-        const dx = point.lat - route.origin_lat;
-        const dy = point.lng - route.origin_lng;
-        const rx = route.destination_lat - route.origin_lat;
-        const ry = route.destination_lng - route.origin_lng;
-        const len = Math.sqrt(rx * rx + ry * ry);
-        if (len === 0) return 0;
-        return Math.max(0, Math.min(1, (dx * rx + dy * ry) / (len * len)));
-      };
-      const progressToUser = calcRouteProgressLocal({ lat: myPickupLat, lng: myPickupLng });
-      const routeTimeToUser = Math.ceil(routeDurationMin * progressToUser);
-      const minutesUntilDeparture = Math.max(0, Math.ceil(msUntilDeparture / 60000));
-      setEtaMinutes(minutesUntilDeparture + routeTimeToUser + stopsBeforeMe.length);
+      // Trip hasn't started — use Google Directions from route origin to user pickup for accurate drive time
+      const routeOrigin = { lat: route.origin_lat, lng: route.origin_lng };
+      const waypoints = stopsBeforeMe.map(s => ({
+        location: new google.maps.LatLng(s.lat, s.lng),
+        stopover: true,
+      }));
+      ds.route({
+        origin: routeOrigin,
+        destination: myPickup,
+        waypoints,
+        optimizeWaypoints: false,
+        travelMode: google.maps.TravelMode.DRIVING,
+      }, (result, status) => {
+        if (status === 'OK' && result) {
+          let driveSeconds = 0;
+          result.routes[0]?.legs?.forEach(leg => { driveSeconds += leg.duration?.value ?? 0; });
+          driveSeconds += stopsBeforeMe.length * 60;
+          const minutesUntilDeparture = Math.max(0, Math.ceil(msUntilDeparture / 60000));
+          setEtaMinutes(minutesUntilDeparture + Math.ceil(driveSeconds / 60));
+        }
+      });
     }
   }, [shuttle?.current_lat, shuttle?.current_lng, booking, route, passengerStops]);
 
