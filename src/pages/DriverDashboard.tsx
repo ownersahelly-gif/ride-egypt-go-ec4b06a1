@@ -396,18 +396,30 @@ const DriverDashboard = () => {
             {/* ==================== HOME TAB ==================== */}
             {tab === 'home' && (
               <div className="space-y-4">
-                {/* Start Ride — THE main action */}
-                {todayBookings.length > 0 && shuttle.status === 'active' && (
-                  <Link to="/active-ride">
-                    <Button className="w-full h-16 text-lg rounded-2xl" size="lg">
-                      <Play className="w-6 h-6 me-2" />
-                      {lang === 'ar' ? 'ابدأ رحلة اليوم' : "Start Today's Ride"}
-                      <span className="ms-2 bg-primary-foreground/20 px-2 py-0.5 rounded-full text-sm">
-                        {todayBookings.length} {lang === 'ar' ? 'راكب' : 'riders'}
-                      </span>
+                {/* Online/Offline toggle */}
+                <div className="bg-card border border-border rounded-2xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${shuttle.status === 'active' ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'}`} />
+                      <div>
+                        <p className="font-medium text-foreground text-sm">
+                          {shuttle.vehicle_model} · {shuttle.vehicle_plate}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {shuttle.status === 'active' ? (lang === 'ar' ? 'متصل — يمكن للركاب الحجز' : 'Online — riders can book') : (lang === 'ar' ? 'غير متصل' : 'Offline')}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={shuttle.status === 'active' ? 'destructive' : 'default'}
+                      onClick={() => updateShuttleStatus(shuttle.status === 'active' ? 'inactive' : 'active')}
+                      disabled={updatingStatus}
+                    >
+                      {shuttle.status === 'active' ? (lang === 'ar' ? 'إيقاف' : 'Go Offline') : (lang === 'ar' ? 'تشغيل' : 'Go Online')}
                     </Button>
-                  </Link>
-                )}
+                  </div>
+                </div>
 
                 {/* Next Trip / How it works card */}
                 {driverSchedules.length > 0 && (() => {
