@@ -248,10 +248,6 @@ const Dashboard = () => {
   };
 
   const MAX_DISTANCE_KM = 2;
-
-  // Store nearest route point for drawing connection line
-  const [nearestRoutePoint, setNearestRoutePoint] = useState<{ lat: number; lng: number } | null>(null);
-
   const validateCustomPoint = useCallback(async (
     point: { lat: number; lng: number; name: string },
     type: 'pickup' | 'dropoff',
