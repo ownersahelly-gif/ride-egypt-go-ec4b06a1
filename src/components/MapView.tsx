@@ -123,7 +123,7 @@ const MapView = ({
 
   if (!GOOGLE_MAPS_KEY) {
     return (
-      <div className={`bg-muted rounded-xl flex items-center justify-center ${className}`}>
+      <div className={`bg-muted rounded-xl flex h-full w-full items-center justify-center ${className}`}>
         <div className="text-center p-6">
           <p className="text-muted-foreground text-sm font-medium">Google Maps API Key Required</p>
           <p className="text-xs text-muted-foreground mt-1">Add VITE_GOOGLE_MAPS_API_KEY to .env</p>
@@ -134,7 +134,7 @@ const MapView = ({
 
   if (loadError) {
     return (
-      <div className={`bg-muted rounded-xl flex items-center justify-center ${className}`}>
+      <div className={`bg-muted rounded-xl flex h-full w-full items-center justify-center ${className}`}>
         <p className="text-destructive text-sm">Failed to load Google Maps</p>
       </div>
     );
@@ -142,14 +142,14 @@ const MapView = ({
 
   if (!isLoaded) {
     return (
-      <div className={`bg-muted rounded-xl flex items-center justify-center ${className}`}>
+      <div className={`bg-muted rounded-xl flex h-full w-full items-center justify-center ${className}`}>
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className={`rounded-xl overflow-hidden relative ${className}`}>
+    <div className={`relative h-full w-full overflow-hidden rounded-xl ${className}`}>
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={center || cairoCenter}
