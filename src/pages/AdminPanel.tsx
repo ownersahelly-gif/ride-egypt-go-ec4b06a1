@@ -32,6 +32,8 @@ const AdminPanel = () => {
 
   // Bundle management
   const [bundles, setBundles] = useState<any[]>([]);
+  const [carpoolVerifications, setCarpoolVerifications] = useState<any[]>([]);
+  const [carpoolProfiles, setCarpoolProfiles] = useState<Record<string, any>>({});
   const [showBundleForm, setShowBundleForm] = useState(false);
   const [bundleForm, setBundleForm] = useState({ route_id: '', bundle_type: 'weekly', ride_count: 10, price: 200, discount_percentage: 15 });
   const [savingBundle, setSavingBundle] = useState(false);
