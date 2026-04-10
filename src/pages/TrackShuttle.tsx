@@ -361,7 +361,7 @@ const TrackShuttle = () => {
       </header>
 
       {/* Map */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative" style={{ minHeight: '40vh' }}>
         {(!shuttle?.current_lat || !shuttle?.current_lng) && !loading ? (
           <div className="h-full min-h-[350px] bg-muted flex flex-col items-center justify-center text-center p-6">
             <Car className="w-16 h-16 text-muted-foreground/40 mb-4" />
