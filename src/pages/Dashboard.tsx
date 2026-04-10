@@ -300,16 +300,16 @@ const Dashboard = () => {
       toast({
         title: lang === 'ar' ? 'موقع بعيد عن المسار' : 'Too far from route',
         description: lang === 'ar'
-          ? `المسافة بالسيارة ${drivingDistanceKm.toFixed(1)} كم عن المسار (الحد الأقصى ${MAX_DISTANCE_KM} كم)`
-          : `Driving distance is ${drivingDistanceKm.toFixed(1)} km from route (max ${MAX_DISTANCE_KM} km)`,
+          ? `الانحراف ذهاباً وإياباً ${roundTripKm.toFixed(1)} كم (الحد الأقصى ${MAX_DISTANCE_KM} كم)`
+          : `Round-trip detour is ${roundTripKm.toFixed(1)} km (max ${MAX_DISTANCE_KM} km)`,
         variant: 'destructive',
       });
     } else {
       toast({
         title: lang === 'ar' ? '✅ موقع مقبول' : '✅ Location accepted',
         description: lang === 'ar'
-          ? `المسافة بالسيارة ${drivingDistanceKm.toFixed(1)} كم عن المسار`
-          : `Driving distance: ${drivingDistanceKm.toFixed(1)} km from route`,
+          ? `الانحراف ذهاباً وإياباً ${roundTripKm.toFixed(1)} كم`
+          : `Round-trip detour: ${roundTripKm.toFixed(1)} km`,
       });
     }
     setValidating(false);
