@@ -89,7 +89,8 @@ const BookRide = () => {
   const { toast } = useToast();
   const Back = lang === 'ar' ? ChevronRight : ChevronLeft;
 
-  const [search, setSearch] = useState('');
+  const [searchPickup, setSearchPickup] = useState('');
+  const [searchDropoff, setSearchDropoff] = useState('');
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'browse' | 'details'>('browse');
 
@@ -220,10 +221,38 @@ const BookRide = () => {
   };
 
   const filteredRides = rideInstances.filter((ri) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return ri.routes?.name_en?.toLowerCase().includes(q) || ri.routes?.name_ar?.includes(q) ||
-      ri.routes?.origin_name_en?.toLowerCase().includes(q) || ri.routes?.destination_name_en?.toLowerCase().includes(q);
+    const route = ri.routes;
+    if (!route) return false;
+
+    // Filter by pickup search
+    if (searchPickup) {
+      const q = searchPickup.toLowerCase();
+      const originEn = route.origin_name_en?.toLowerCase() || '';
+      const originAr = route.origin_name_ar || '';
+      const destEn = route.destination_name_en?.toLowerCase() || '';
+      const destAr = route.destination_name_ar || '';
+      // For "go" rides, pickup = origin; for "return" rides, pickup = destination
+      const matchesPickup = ri.direction === 'return'
+        ? (destEn.includes(q) || destAr.includes(q))
+        : (originEn.includes(q) || originAr.includes(q));
+      if (!matchesPickup) return false;
+    }
+
+    // Filter by dropoff search
+    if (searchDropoff) {
+      const q = searchDropoff.toLowerCase();
+      const originEn = route.origin_name_en?.toLowerCase() || '';
+      const originAr = route.origin_name_ar || '';
+      const destEn = route.destination_name_en?.toLowerCase() || '';
+      const destAr = route.destination_name_ar || '';
+      // For "go" rides, dropoff = destination; for "return" rides, dropoff = origin
+      const matchesDropoff = ri.direction === 'return'
+        ? (originEn.includes(q) || originAr.includes(q))
+        : (destEn.includes(q) || destAr.includes(q));
+      if (!matchesDropoff) return false;
+    }
+
+    return true;
   });
 
   // --- Validate a custom point (pickup or dropoff) ---
@@ -768,10 +797,25 @@ const BookRide = () => {
       <main className="container mx-auto px-4 py-6 max-w-2xl">
         {step === 'browse' && (
           <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute start-3 top-3 h-5 w-5 text-muted-foreground" />
-              <Input placeholder={t('booking.searchPlaceholder')} className="ps-11 h-12 text-base rounded-xl"
-                value={search} onChange={(e) => setSearch(e.target.value)} />
+            <div className="space-y-2">
+              <div className="relative">
+                <MapPin className="absolute start-3 top-3 h-5 w-5 text-green-500" />
+                <Input
+                  placeholder={lang === 'ar' ? 'من أين؟ (نقطة الركوب)' : 'From where? (Pickup)'}
+                  className="ps-11 h-12 text-base rounded-xl"
+                  value={searchPickup}
+                  onChange={(e) => setSearchPickup(e.target.value)}
+                />
+              </div>
+              <div className="relative">
+                <MapPin className="absolute start-3 top-3 h-5 w-5 text-destructive" />
+                <Input
+                  placeholder={lang === 'ar' ? 'إلى أين؟ (نقطة النزول)' : 'To where? (Dropoff)'}
+                  className="ps-11 h-12 text-base rounded-xl"
+                  value={searchDropoff}
+                  onChange={(e) => setSearchDropoff(e.target.value)}
+                />
+              </div>
             </div>
 
             <div>
