@@ -127,27 +127,28 @@ const Dashboard = () => {
     ? Math.max(10, Math.round(drivingDistanceKm * pricePerKm))
     : null;
 
-  // Fetch user profile, roles, settings
+  // Fetch settings (always), user profile (if logged in)
   useEffect(() => {
+    // Always fetch price
+    supabase.from('app_settings').select('value').eq('key', 'price_per_km').single()
+      .then(({ data }) => { if (data?.value) setPricePerKm(parseFloat(data.value)); });
+    supabase.from('app_settings').select('value').eq('key', 'instapay_phone').single()
+      .then(({ data }) => { if (data) setInstapayPhone(data.value); });
+
     if (!user) return;
-    const fetchData = async () => {
-      const [{ data: profileData }, { data: rolesData }, { data: settingsData }] = await Promise.all([
+    const fetchUserData = async () => {
+      const [{ data: profileData }, { data: rolesData }] = await Promise.all([
         supabase.from('profiles').select('*').eq('user_id', user.id).single(),
         supabase.from('user_roles').select('role').eq('user_id', user.id),
-        supabase.from('app_settings').select('value').eq('key', 'price_per_km').single(),
       ]);
       setProfile(profileData);
-      if (settingsData?.value) setPricePerKm(parseFloat(settingsData.value));
       const roles = (rolesData || []).map(r => r.role);
       setIsAdmin(roles.includes('admin'));
       const driverFlag = profileData?.user_type === 'driver' || roles.includes('moderator');
       setIsDriver(driverFlag);
       if (driverFlag) { navigate('/driver-dashboard'); return; }
     };
-    fetchData();
-
-    supabase.from('app_settings').select('value').eq('key', 'instapay_phone').single()
-      .then(({ data }) => { if (data) setInstapayPhone(data.value); });
+    fetchUserData();
   }, [user]);
 
   // Date options
