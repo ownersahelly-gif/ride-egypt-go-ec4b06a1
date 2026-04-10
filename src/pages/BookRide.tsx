@@ -850,7 +850,7 @@ const BookRide = () => {
                             ? (lang === 'ar' ? ride.routes?.destination_name_ar : ride.routes?.destination_name_en)
                             : (lang === 'ar' ? ride.routes?.origin_name_ar : ride.routes?.origin_name_en)}
                         </span>
-                        <ArrowRight className="w-4 h-4 shrink-0" />
+                        <ArrowRight className={`w-4 h-4 shrink-0 ${lang === 'ar' ? 'rotate-180' : ''}`} />
                         <MapPin className="w-4 h-4 text-destructive shrink-0" />
                         <span className="truncate">
                           {ride.direction === 'return'
