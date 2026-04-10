@@ -43,11 +43,9 @@ const DriverDashboard = () => {
   const [scheduleForm, setScheduleForm] = useState({
     route_id: '',
     days: [] as number[],
-    departure_time: '08:00',
-    return_time: '17:00',
+    timeSlots: [{ direction: 'go' as 'go' | 'return', time: '08:00' }, { direction: 'return' as 'go' | 'return', time: '17:00' }] as { direction: 'go' | 'return'; time: string }[],
     is_recurring: true,
     min_passengers: 5,
-    trip_direction: 'both' as 'go' | 'return' | 'both',
   });
   const [savingSchedule, setSavingSchedule] = useState(false);
   const scheduleFormRef = useRef<HTMLDivElement>(null);
@@ -62,7 +60,7 @@ const DriverDashboard = () => {
   const [savingRouteRequest, setSavingRouteRequest] = useState(false);
   const [pickingLocation, setPickingLocation] = useState<'origin' | 'destination' | null>(null);
 
-  useDriverBookingNotifications(shuttle?.id || null);
+  const { newBookingsCount, acknowledge: ackBookings } = useDriverBookingNotifications(shuttle?.id || null);
 
   const dayNames = lang === 'ar'
     ? ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
@@ -188,15 +186,44 @@ const DriverDashboard = () => {
   };
 
   const saveSchedule = async () => {
-    if (!user || !shuttle || !scheduleForm.route_id || scheduleForm.days.length === 0) return;
+    if (!user || !shuttle || !scheduleForm.route_id || scheduleForm.days.length === 0 || scheduleForm.timeSlots.length === 0) return;
     setSavingSchedule(true);
-    const departureEntries = scheduleForm.days.map(day => ({
-      driver_id: user.id, route_id: scheduleForm.route_id, shuttle_id: shuttle.id,
-      day_of_week: day,
-      departure_time: scheduleForm.trip_direction === 'return' ? scheduleForm.return_time : scheduleForm.departure_time,
-      is_recurring: scheduleForm.is_recurring, is_active: true, min_passengers: scheduleForm.min_passengers,
-      return_time: scheduleForm.trip_direction === 'go' ? null : (scheduleForm.trip_direction === 'return' ? null : scheduleForm.return_time),
-    }));
+    // Create one schedule entry per day per time slot
+    const goSlots = scheduleForm.timeSlots.filter(s => s.direction === 'go');
+    const returnSlots = scheduleForm.timeSlots.filter(s => s.direction === 'return');
+    // Pair go and return slots, or create individual entries
+    const departureEntries: any[] = [];
+    scheduleForm.days.forEach(day => {
+      if (goSlots.length > 0 && returnSlots.length > 0) {
+        // Pair them: first go with first return, etc.
+        const maxPairs = Math.max(goSlots.length, returnSlots.length);
+        for (let i = 0; i < maxPairs; i++) {
+          departureEntries.push({
+            driver_id: user.id, route_id: scheduleForm.route_id, shuttle_id: shuttle.id,
+            day_of_week: day,
+            departure_time: goSlots[i]?.time || goSlots[0].time,
+            return_time: returnSlots[i]?.time || returnSlots[0].time,
+            is_recurring: scheduleForm.is_recurring, is_active: true, min_passengers: scheduleForm.min_passengers,
+          });
+        }
+      } else if (goSlots.length > 0) {
+        goSlots.forEach(slot => {
+          departureEntries.push({
+            driver_id: user.id, route_id: scheduleForm.route_id, shuttle_id: shuttle.id,
+            day_of_week: day, departure_time: slot.time, return_time: null,
+            is_recurring: scheduleForm.is_recurring, is_active: true, min_passengers: scheduleForm.min_passengers,
+          });
+        });
+      } else {
+        returnSlots.forEach(slot => {
+          departureEntries.push({
+            driver_id: user.id, route_id: scheduleForm.route_id, shuttle_id: shuttle.id,
+            day_of_week: day, departure_time: slot.time, return_time: null,
+            is_recurring: scheduleForm.is_recurring, is_active: true, min_passengers: scheduleForm.min_passengers,
+          });
+        });
+      }
+    });
     const { error } = await supabase.from('driver_schedules').insert(departureEntries);
     if (error) toast({ title: t('auth.error'), description: error.message, variant: 'destructive' });
     else {
@@ -206,7 +233,7 @@ const DriverDashboard = () => {
       setDriverSchedules(data || []);
       setShowScheduleForm(false);
       setSelectedRouteForSchedule(null);
-      setScheduleForm({ route_id: '', days: [], departure_time: '08:00', return_time: '17:00', is_recurring: true, min_passengers: 5, trip_direction: 'both' });
+      setScheduleForm({ route_id: '', days: [], timeSlots: [{ direction: 'go', time: '08:00' }, { direction: 'return', time: '17:00' }], is_recurring: true, min_passengers: 5 });
       setTab('home');
     }
     setSavingSchedule(false);
@@ -328,11 +355,14 @@ const DriverDashboard = () => {
             {/* Tab bar */}
             <div className="flex gap-1 bg-card border border-border rounded-xl p-1 mb-6">
               {tabs.map(({ key, icon: Icon, label }) => (
-                <button key={key} onClick={() => setTab(key)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                <button key={key} onClick={() => { setTab(key); if (key === 'home') ackBookings(); }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors relative ${
                     tab === key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                   }`}>
                   <Icon className="w-4 h-4" />{label}
+                  {key === 'home' && newBookingsCount > 0 && tab !== 'home' && (
+                    <span className="absolute -top-1 -end-1 w-5 h-5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">{newBookingsCount}</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -491,10 +521,12 @@ const DriverDashboard = () => {
                                 </div>
                               </div>
                             )}
-                            {/* Per-day passenger breakdown */}
+                            {/* Per-day passenger breakdown with go/return counts */}
                             <div className="space-y-1.5">
                               {(schedules as any[]).sort((a: any, b: any) => a.day_of_week - b.day_of_week).map((s: any) => {
                                 const dayBookings = bookingsByDay[s.day_of_week] || [];
+                                const goCount = dayBookings.filter((b: any) => b.trip_direction === 'go' || b.trip_direction === 'both').length;
+                                const returnCount = dayBookings.filter((b: any) => b.trip_direction === 'return' || b.trip_direction === 'both').length;
                                 return (
                                   <div key={s.id} className="flex items-center justify-between bg-surface rounded-lg px-3 py-2">
                                     <div className="flex items-center gap-2 text-sm">
@@ -502,9 +534,12 @@ const DriverDashboard = () => {
                                       {s.departure_time && <><Clock className="w-3.5 h-3.5 text-muted-foreground" /><span className="text-muted-foreground">{s.departure_time?.slice(0, 5)}</span></>}
                                       {s.return_time && <><ArrowRight className="w-3 h-3 text-muted-foreground" /><span className="text-muted-foreground">{s.return_time?.slice(0, 5)}</span></>}
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                                        <Users className="w-3 h-3 inline me-1" />{dayBookings.length}
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full" title={lang === 'ar' ? 'ذهاب' : 'Going'}>
+                                        → {goCount}
+                                      </span>
+                                      <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full" title={lang === 'ar' ? 'عودة' : 'Return'}>
+                                        ← {returnCount}
                                       </span>
                                     </div>
                                   </div>
@@ -668,34 +703,39 @@ const DriverDashboard = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>{lang === 'ar' ? 'نوع الرحلة' : 'Trip Type'}</Label>
-                      <div className="flex gap-2">
-                        {([
-                          { value: 'both', labelAr: 'ذهاب وعودة', labelEn: 'Both' },
-                          { value: 'go', labelAr: 'ذهاب فقط', labelEn: 'Going Only' },
-                          { value: 'return', labelAr: 'عودة فقط', labelEn: 'Return Only' },
-                        ] as const).map(opt => (
-                          <button key={opt.value} onClick={() => setScheduleForm(p => ({ ...p, trip_direction: opt.value }))}
-                            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                              scheduleForm.trip_direction === opt.value ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border'
-                            }`}>{lang === 'ar' ? opt.labelAr : opt.labelEn}</button>
+                      <Label>{lang === 'ar' ? 'أوقات الرحلات' : 'Trip Time Slots'}</Label>
+                      <div className="space-y-2">
+                        {scheduleForm.timeSlots.map((slot, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <select
+                              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                              value={slot.direction}
+                              onChange={e => {
+                                const updated = [...scheduleForm.timeSlots];
+                                updated[idx] = { ...updated[idx], direction: e.target.value as 'go' | 'return' };
+                                setScheduleForm(p => ({ ...p, timeSlots: updated }));
+                              }}>
+                              <option value="go">{lang === 'ar' ? '→ ذهاب' : '→ Going'}</option>
+                              <option value="return">{lang === 'ar' ? '← عودة' : '← Return'}</option>
+                            </select>
+                            <Input type="time" value={slot.time} className="flex-1"
+                              onChange={e => {
+                                const updated = [...scheduleForm.timeSlots];
+                                updated[idx] = { ...updated[idx], time: e.target.value };
+                                setScheduleForm(p => ({ ...p, timeSlots: updated }));
+                              }} />
+                            {scheduleForm.timeSlots.length > 1 && (
+                              <button onClick={() => setScheduleForm(p => ({ ...p, timeSlots: p.timeSlots.filter((_, i) => i !== idx) }))}
+                                className="text-destructive/60 hover:text-destructive p-1"><Trash2 className="w-4 h-4" /></button>
+                            )}
+                          </div>
                         ))}
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      {scheduleForm.trip_direction !== 'return' && (
-                        <div className="space-y-1">
-                          <Label className="text-xs">{lang === 'ar' ? 'ذهاب' : 'Departure'}</Label>
-                          <Input type="time" value={scheduleForm.departure_time} onChange={e => setScheduleForm(p => ({ ...p, departure_time: e.target.value }))} />
-                        </div>
-                      )}
-                      {scheduleForm.trip_direction !== 'go' && (
-                        <div className="space-y-1">
-                          <Label className="text-xs">{lang === 'ar' ? 'عودة' : 'Return'}</Label>
-                          <Input type="time" value={scheduleForm.return_time} onChange={e => setScheduleForm(p => ({ ...p, return_time: e.target.value }))} />
-                        </div>
-                      )}
+                      <button
+                        onClick={() => setScheduleForm(p => ({ ...p, timeSlots: [...p.timeSlots, { direction: 'go', time: '12:00' }] }))}
+                        className="text-xs text-primary hover:underline flex items-center gap-1">
+                        <Plus className="w-3 h-3" />{lang === 'ar' ? 'إضافة وقت آخر' : 'Add another time slot'}
+                      </button>
                     </div>
 
                     <div className="space-y-1">
@@ -709,7 +749,7 @@ const DriverDashboard = () => {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button onClick={saveSchedule} disabled={savingSchedule || !scheduleForm.route_id || scheduleForm.days.length === 0} className="flex-1">
+                      <Button onClick={saveSchedule} disabled={savingSchedule || !scheduleForm.route_id || scheduleForm.days.length === 0 || scheduleForm.timeSlots.length === 0} className="flex-1">
                         {savingSchedule ? <Loader2 className="w-4 h-4 animate-spin me-1" /> : <CheckCircle2 className="w-4 h-4 me-1" />}
                         {lang === 'ar' ? 'حفظ' : 'Save'}
                       </Button>

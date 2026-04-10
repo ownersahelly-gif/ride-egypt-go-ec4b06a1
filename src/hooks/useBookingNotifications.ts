@@ -1,7 +1,27 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+
+// Notification sound using Web Audio API
+const playNotificationSound = () => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.2);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+  } catch {
+    // Audio not available
+  }
+};
 
 /**
  * Subscribes to realtime booking status changes for the current user
@@ -31,6 +51,7 @@ export const useBookingNotifications = () => {
 
           switch (newStatus) {
             case 'confirmed':
+              playNotificationSound();
               toast.success('Booking Confirmed! 🎉', {
                 description: 'Your driver has confirmed your ride. Get ready!',
               });
@@ -63,8 +84,13 @@ export const useBookingNotifications = () => {
 
 /**
  * For drivers: subscribes to new bookings on their shuttle
+ * Returns a newBookingsCount badge number that resets when acknowledged
  */
 export const useDriverBookingNotifications = (shuttleId: string | null) => {
+  const [newBookingsCount, setNewBookingsCount] = useState(0);
+
+  const acknowledge = useCallback(() => setNewBookingsCount(0), []);
+
   useEffect(() => {
     if (!shuttleId) return;
 
@@ -79,6 +105,8 @@ export const useDriverBookingNotifications = (shuttleId: string | null) => {
           filter: `shuttle_id=eq.${shuttleId}`,
         },
         () => {
+          playNotificationSound();
+          setNewBookingsCount(prev => prev + 1);
           toast.info('New Booking! 📋', {
             description: 'A new passenger has booked a ride on your shuttle.',
           });
@@ -90,4 +118,6 @@ export const useDriverBookingNotifications = (shuttleId: string | null) => {
       supabase.removeChannel(channel);
     };
   }, [shuttleId]);
+
+  return { newBookingsCount, acknowledge };
 };

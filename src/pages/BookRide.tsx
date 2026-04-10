@@ -98,6 +98,9 @@ const BookRide = () => {
   // Which one is being set via map click
   const [mapClickTarget, setMapClickTarget] = useState<'pickup' | 'dropoff'>('pickup');
 
+  // Trip direction
+  const [tripDirection, setTripDirection] = useState<'go' | 'return' | 'both'>('both');
+
   // Date / rides
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [rideInstances, setRideInstances] = useState<any[]>([]);
@@ -190,6 +193,7 @@ const BookRide = () => {
     setPickupMode('start');
     setDropoffMode('end');
     setUseBundle(false);
+    setTripDirection('both');
     setStep('details');
 
     if (user && ride.route_id) {
@@ -368,12 +372,15 @@ const BookRide = () => {
         ? (lang === 'ar' ? selectedRide.routes.destination_name_ar : selectedRide.routes.destination_name_en)
         : customDropoff?.name;
 
+      const basePrice = selectedRide.routes?.price || 0;
+      const totalPrice = usingBundle ? 0 : (tripDirection === 'both' ? basePrice * 2 : basePrice);
+
       const bookingData: any = {
         user_id: user.id,
         route_id: selectedRide.route_id,
         shuttle_id: selectedRide.shuttle_id,
         seats: 1,
-        total_price: usingBundle ? 0 : (selectedRide.routes?.price || 0),
+        total_price: totalPrice,
         scheduled_date: selectedRide.ride_date,
         scheduled_time: selectedRide.departure_time,
         status: asWaitlist ? 'waitlist' : (usingBundle ? 'confirmed' : 'pending'),
@@ -385,6 +392,7 @@ const BookRide = () => {
         custom_dropoff_lat: dropoffLat,
         custom_dropoff_lng: dropoffLng,
         custom_dropoff_name: dropoffName,
+        trip_direction: tripDirection,
       };
 
       const { error } = await supabase.from('bookings').insert(bookingData);
@@ -947,6 +955,32 @@ const BookRide = () => {
             {/* Dropoff */}
             {renderPointSelector('dropoff', dropoffMode, setDropoffMode, customDropoff, validatingDropoff, dropoffResult)}
 
+            {/* Trip Direction */}
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <ArrowRight className="w-4 h-4 text-primary" />
+                {lang === 'ar' ? 'نوع الرحلة' : 'Trip Type'}
+              </h3>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { value: 'go' as const, labelAr: 'ذهاب فقط', labelEn: 'Going Only', priceMultiplier: 1 },
+                  { value: 'return' as const, labelAr: 'عودة فقط', labelEn: 'Return Only', priceMultiplier: 1 },
+                  { value: 'both' as const, labelAr: 'ذهاب وعودة', labelEn: 'Round Trip', priceMultiplier: 2 },
+                ]).map(opt => {
+                  const basePrice = selectedRide.routes?.price || 0;
+                  return (
+                    <button key={opt.value} onClick={() => setTripDirection(opt.value)}
+                      className={`px-2 py-3 rounded-xl text-center border-2 transition-colors ${
+                        tripDirection === opt.value ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:border-primary/50'
+                      }`}>
+                      <p className="text-sm font-medium">{lang === 'ar' ? opt.labelAr : opt.labelEn}</p>
+                      <p className="text-xs mt-1 opacity-80">{basePrice * opt.priceMultiplier} EGP</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Active Bundle */}
             {activeBundlePurchase && (
               <div className="bg-card border-2 border-secondary rounded-2xl p-5 space-y-3">
@@ -1059,7 +1093,8 @@ const BookRide = () => {
                 </h3>
                 <div className="bg-surface rounded-xl p-4 text-sm text-muted-foreground space-y-2">
                   <p>{lang === 'ar' ? 'حوّل المبلغ عبر InstaPay ثم ارفع لقطة شاشة للتحويل:' : 'Transfer the amount via InstaPay then upload a screenshot:'}</p>
-                  <p className="font-bold text-foreground text-lg">{selectedRide.routes?.price} EGP</p>
+                  <p className="font-bold text-foreground text-lg">{tripDirection === 'both' ? (selectedRide.routes?.price || 0) * 2 : selectedRide.routes?.price} EGP</p>
+                  {tripDirection === 'both' && <p className="text-xs text-muted-foreground">{lang === 'ar' ? '(ذهاب + عودة)' : '(Going + Return)'}</p>}
                   {instapayPhone && (
                     <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-3 mt-2">
                       <Phone className="w-5 h-5 text-primary shrink-0" />
@@ -1105,17 +1140,22 @@ const BookRide = () => {
 
             {/* Summary & Book */}
             <div className="bg-card border border-border rounded-2xl p-5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">{lang === 'ar' ? 'مقعد واحد' : '1 Seat'}</span>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-muted-foreground">
+                  {tripDirection === 'both' ? (lang === 'ar' ? 'ذهاب وعودة' : 'Round Trip') : tripDirection === 'go' ? (lang === 'ar' ? 'ذهاب فقط' : 'Going Only') : (lang === 'ar' ? 'عودة فقط' : 'Return Only')}
+                </span>
                 {useBundle ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground line-through">{selectedRide.routes?.price} EGP</span>
+                    <span className="text-sm text-muted-foreground line-through">{tripDirection === 'both' ? (selectedRide.routes?.price || 0) * 2 : selectedRide.routes?.price} EGP</span>
                     <span className="text-lg font-bold text-secondary">{lang === 'ar' ? 'من الباقة' : 'Bundle'}</span>
                   </div>
                 ) : (
-                  <span className="text-lg font-bold text-primary">{selectedRide.routes?.price} EGP</span>
+                  <span className="text-lg font-bold text-primary">{tripDirection === 'both' ? (selectedRide.routes?.price || 0) * 2 : selectedRide.routes?.price} EGP</span>
                 )}
               </div>
+              {tripDirection === 'both' && !useBundle && (
+                <p className="text-[10px] text-muted-foreground mb-2">{lang === 'ar' ? `${selectedRide.routes?.price} × 2 رحلة` : `${selectedRide.routes?.price} × 2 trips`}</p>
+              )}
 
               {!isRideFull ? (
                 <Button className="w-full mt-3" size="lg" onClick={() => handleBook(false)}
