@@ -95,24 +95,17 @@ const MyBookings = () => {
     if (!['confirmed', 'boarded'].includes(booking.status)) return null;
     const shuttle = booking.shuttles;
     const route = booking.routes;
-    if (!shuttle || !route) return null;
+    if (!route) return null;
 
-    // If shuttle has no live location, calculate from route origin
-    const shuttleLoc = (shuttle.current_lat && shuttle.current_lng)
+    // If shuttle has live location, use distance-based ETA
+    const shuttleLoc = (shuttle?.current_lat && shuttle?.current_lng)
       ? { lat: shuttle.current_lat, lng: shuttle.current_lng }
       : null;
-
-    if (!shuttleLoc) return null; // Can't calculate without shuttle location
 
     const myPickup = {
       lat: booking.custom_pickup_lat ?? route.origin_lat,
       lng: booking.custom_pickup_lng ?? route.origin_lng,
     };
-
-    // Distance from shuttle to my pickup
-    const distKm = haversineKm(shuttleLoc, myPickup);
-    // Assume average speed 30km/h in Cairo traffic
-    let etaMin = Math.ceil((distKm / 30) * 60);
 
     // Count stops before me
     const key = `${booking.shuttle_id}_${booking.scheduled_date}_${booking.scheduled_time}`;
@@ -140,10 +133,38 @@ const MyBookings = () => {
       return calcProgress(pPickup) < myProgress;
     }).length;
 
-    // Add ~1 min per stop for boarding
-    etaMin += stopsBefore;
+    if (shuttleLoc) {
+      // Distance from shuttle to my pickup
+      const distKm = haversineKm(shuttleLoc, myPickup);
+      let etaMin = Math.ceil((distKm / 30) * 60);
+      etaMin += stopsBefore;
+      return { etaMin, stopsBefore, isLive: true };
+    }
 
-    return { etaMin, stopsBefore };
+    // No live GPS — calculate ETA from scheduled departure time
+    const now = new Date();
+    const [h, m, s] = (booking.scheduled_time || '08:00:00').split(':').map(Number);
+    const scheduledDeparture = new Date(booking.scheduled_date + 'T00:00:00');
+    scheduledDeparture.setHours(h, m, s || 0);
+
+    // If departure is in the future, show time until departure + estimated route time to user's stop
+    const msUntilDeparture = scheduledDeparture.getTime() - now.getTime();
+    if (msUntilDeparture > 0) {
+      // Time until departure + proportional route time to user's stop + 1 min per stop
+      const routeDurationMin = route.estimated_duration_minutes || 30;
+      const progressToUser = Math.max(0, Math.min(1, myProgress));
+      const routeTimeToUser = Math.ceil(routeDurationMin * progressToUser);
+      const etaMin = Math.ceil(msUntilDeparture / 60000) + routeTimeToUser + stopsBefore;
+      return { etaMin, stopsBefore, isLive: false };
+    }
+
+    // Departure was in the past but no live GPS — estimate based on elapsed time
+    const elapsedMin = Math.abs(msUntilDeparture) / 60000;
+    const routeDurationMin = route.estimated_duration_minutes || 30;
+    const progressToUser = Math.max(0, Math.min(1, myProgress));
+    const routeTimeToUser = Math.ceil(routeDurationMin * progressToUser);
+    const remainingMin = Math.max(1, routeTimeToUser + stopsBefore - Math.floor(elapsedMin));
+    return { etaMin: remainingMin, stopsBefore, isLive: false };
   };
 
   const statusColors: Record<string, string> = {
@@ -203,15 +224,17 @@ const MyBookings = () => {
 
                   {/* ETA Banner for active rides */}
                   {eta && !booking.status.includes('boarded') && (
-                    <div className="bg-primary/10 rounded-lg p-3 mb-3 flex items-center justify-between">
+                    <div className={`${eta.isLive ? 'bg-primary/10' : 'bg-secondary/10'} rounded-lg p-3 mb-3 flex items-center justify-between`}>
                       <div className="flex items-center gap-2">
-                        <Timer className="w-4 h-4 text-primary" />
+                        <Timer className={`w-4 h-4 ${eta.isLive ? 'text-primary' : 'text-secondary'}`} />
                         <div>
                           <p className="text-sm font-semibold text-foreground">
                             ~{eta.etaMin} {lang === 'ar' ? 'دقيقة' : 'min'}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {lang === 'ar' ? 'الوقت المتوقع للوصول' : 'Estimated arrival'}
+                            {eta.isLive
+                              ? (lang === 'ar' ? 'تتبع مباشر' : 'Live tracking')
+                              : (lang === 'ar' ? 'الوقت المقدر للوصول' : 'Estimated arrival')}
                           </p>
                         </div>
                       </div>
