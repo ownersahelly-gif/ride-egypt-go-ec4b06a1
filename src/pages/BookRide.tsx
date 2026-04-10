@@ -109,6 +109,15 @@ const BookRide = () => {
   // Route directions result for on-route checking
   const [routeDirections, setRouteDirections] = useState<any>(null);
 
+  // Saved locations
+  const [savedLocations, setSavedLocations] = useState<any[]>([]);
+
+  // Bundles
+  const [availableBundles, setAvailableBundles] = useState<any[]>([]);
+  const [activeBundlePurchase, setActiveBundlePurchase] = useState<any>(null);
+  const [useBundle, setUseBundle] = useState(false);
+  const [showBundleSection, setShowBundleSection] = useState(false);
+
   const getDateOptions = () => {
     const options: { label: string; date: string }[] = [];
     const today = new Date();
