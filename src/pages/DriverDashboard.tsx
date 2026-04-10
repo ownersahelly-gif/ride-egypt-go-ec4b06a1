@@ -595,6 +595,20 @@ const DriverDashboard = () => {
                             <p className="text-[10px] text-muted-foreground">{r.estimated_duration_minutes} {lang === 'ar' ? 'د' : 'min'}</p>
                           </div>
                         </div>
+                        {r.origin_lat && r.destination_lat && (
+                          <MapView
+                            className="h-[150px] mb-2"
+                            markers={[
+                              { lat: r.origin_lat, lng: r.origin_lng, label: 'A', color: 'green' },
+                              { lat: r.destination_lat, lng: r.destination_lng, label: 'B', color: 'red' },
+                            ]}
+                            origin={{ lat: r.origin_lat, lng: r.origin_lng }}
+                            destination={{ lat: r.destination_lat, lng: r.destination_lng }}
+                            showDirections
+                            showUserLocation={false}
+                            zoom={10}
+                          />
+                        )}
                         <div className="flex items-center justify-between">
                           <p className="text-xs text-green-600">
                             <TrendingUp className="w-3 h-3 inline me-1" />
