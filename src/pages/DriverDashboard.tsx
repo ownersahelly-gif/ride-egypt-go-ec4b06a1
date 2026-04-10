@@ -254,16 +254,31 @@ const DriverDashboard = () => {
           const date = new Date(today);
           date.setDate(today.getDate() + (w * 7) + d);
           if (date.getDay() === entry.day_of_week && date >= today) {
+            const dateStr = date.toISOString().split('T')[0];
+            // Departure (going) ride
             instances.push({
               driver_id: user.id,
               route_id: entry.route_id,
               shuttle_id: shuttle.id,
-              ride_date: date.toISOString().split('T')[0],
+              ride_date: dateStr,
               departure_time: entry.departure_time,
               available_seats: shuttle.capacity,
               total_seats: shuttle.capacity,
               status: 'scheduled',
             });
+            // Return ride (if return_time is set)
+            if (entry.return_time) {
+              instances.push({
+                driver_id: user.id,
+                route_id: entry.route_id,
+                shuttle_id: shuttle.id,
+                ride_date: dateStr,
+                departure_time: entry.return_time,
+                available_seats: shuttle.capacity,
+                total_seats: shuttle.capacity,
+                status: 'scheduled',
+              });
+            }
           }
         }
       }
