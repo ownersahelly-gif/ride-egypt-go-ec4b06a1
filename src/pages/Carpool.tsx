@@ -20,49 +20,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 
-const DEMO_ROUTES = [
-  {
-    id: 'demo-1', user_id: 'demo-user-1',
-    origin_name: 'Maadi, Cairo', origin_lat: 29.9602, origin_lng: 31.2569,
-    destination_name: 'Smart Village, 6th October', destination_lat: 30.0711, destination_lng: 31.0175,
-    departure_time: '07:30:00', available_seats: 3, is_daily: true, days_of_week: [0, 1, 2, 3, 4],
-    share_fuel: true, fuel_share_amount: 25, allow_car_swap: true,
-    notes: 'Leaving sharp at 7:30. AC car.', status: 'active', created_at: new Date().toISOString(),
-  },
-  {
-    id: 'demo-2', user_id: 'demo-user-2',
-    origin_name: 'Heliopolis, Cairo', origin_lat: 30.0870, origin_lng: 31.3225,
-    destination_name: 'Cairo University', destination_lat: 30.0261, destination_lng: 31.2118,
-    departure_time: '08:00:00', available_seats: 2, is_daily: true, days_of_week: [0, 1, 2, 3],
-    share_fuel: true, fuel_share_amount: 20, allow_car_swap: false,
-    notes: null, status: 'active', created_at: new Date().toISOString(),
-  },
-  {
-    id: 'demo-3', user_id: 'demo-user-3',
-    origin_name: 'Nasr City, Cairo', origin_lat: 30.0626, origin_lng: 31.3387,
-    destination_name: 'New Cairo, AUC', destination_lat: 30.0194, destination_lng: 31.4998,
-    departure_time: '09:00:00', available_seats: 4, is_daily: false, days_of_week: [],
-    share_fuel: false, fuel_share_amount: 0, allow_car_swap: false,
-    notes: 'One-time trip on Thursday.', status: 'active', created_at: new Date().toISOString(),
-  },
-  {
-    id: 'demo-4', user_id: 'demo-user-4',
-    origin_name: 'Zamalek, Cairo', origin_lat: 30.0609, origin_lng: 31.2194,
-    destination_name: 'New Administrative Capital', destination_lat: 30.0197, destination_lng: 31.7601,
-    departure_time: '06:30:00', available_seats: 3, is_daily: true, days_of_week: [0, 1, 2, 3, 4],
-    share_fuel: true, fuel_share_amount: 40, allow_car_swap: true,
-    notes: 'Daily commute to NAC. Fuel split equally.', status: 'active', created_at: new Date().toISOString(),
-  },
-  {
-    id: 'demo-5', user_id: 'demo-user-5',
-    origin_name: 'Dokki, Giza', origin_lat: 30.0382, origin_lng: 31.2012,
-    destination_name: 'Ain Shams University', destination_lat: 30.0793, destination_lng: 31.2834,
-    departure_time: '07:00:00', available_seats: 2, is_daily: true, days_of_week: [0, 1, 2, 3, 4],
-    share_fuel: true, fuel_share_amount: 15, allow_car_swap: false,
-    notes: null, status: 'active', created_at: new Date().toISOString(),
-  },
-];
-
 function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -153,9 +110,7 @@ const Carpool = () => {
       supabase.from('carpool_verifications').select('*').eq('user_id', user!.id).maybeSingle(),
     ]);
     const dbRoutes = routesRes.data || [];
-    // Always include demo routes — they have unique demo-* ids so no duplicates
-    const allRoutes = [...dbRoutes, ...DEMO_ROUTES];
-    setRoutes(allRoutes);
+    setRoutes(dbRoutes);
     setMyRequests(requestsRes.data || []);
     setVerification(verRes.data);
     setLoading(false);
