@@ -1,10 +1,11 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Ticket, Route, User } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const BottomNav = () => {
   const { lang } = useLanguage();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const tabs = [
     { path: '/dashboard', icon: Home, labelEn: 'Home', labelAr: 'الرئيسية' },
@@ -19,10 +20,12 @@ const BottomNav = () => {
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path;
           const Icon = tab.icon;
+          const isHome = tab.path === '/dashboard';
           return (
             <Link
               key={tab.path}
               to={tab.path}
+              onDoubleClick={isHome ? (e) => { e.preventDefault(); navigate('/admin'); } : undefined}
               className={`flex flex-col items-center gap-0.5 px-3 py-1.5 transition-colors ${
                 isActive ? 'text-primary' : 'text-muted-foreground'
               }`}
