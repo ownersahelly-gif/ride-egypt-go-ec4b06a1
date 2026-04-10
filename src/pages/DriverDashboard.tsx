@@ -616,7 +616,9 @@ const DriverDashboard = () => {
                                       <span className="text-xs text-muted-foreground">{getDayLabel(slot.dayOffset, slot.day)}</span>
                                     </div>
                                     <p className="text-sm font-medium text-foreground mt-0.5">
-                                      {slot.direction === 'go' ? `${displayOrigin} → ${displayDest}` : `${displayDest} → ${displayOrigin}`}
+                                      {slot.direction === 'go'
+                                        ? `${displayOrigin} ${lang === 'ar' ? '←' : '→'} ${displayDest}`
+                                        : `${displayDest} ${lang === 'ar' ? '→' : '←'} ${displayOrigin}`}
                                     </p>
                                     <p className="text-xs text-muted-foreground">{slotBookings.length} {lang === 'ar' ? 'راكب' : 'passengers'}</p>
                                   </div>
