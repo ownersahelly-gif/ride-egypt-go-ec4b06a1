@@ -954,6 +954,32 @@ const BookRide = () => {
             {/* Dropoff */}
             {renderPointSelector('dropoff', dropoffMode, setDropoffMode, customDropoff, validatingDropoff, dropoffResult)}
 
+            {/* Trip Direction */}
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <ArrowRight className="w-4 h-4 text-primary" />
+                {lang === 'ar' ? 'نوع الرحلة' : 'Trip Type'}
+              </h3>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { value: 'go' as const, labelAr: 'ذهاب فقط', labelEn: 'Going Only', priceMultiplier: 1 },
+                  { value: 'return' as const, labelAr: 'عودة فقط', labelEn: 'Return Only', priceMultiplier: 1 },
+                  { value: 'both' as const, labelAr: 'ذهاب وعودة', labelEn: 'Round Trip', priceMultiplier: 2 },
+                ]).map(opt => {
+                  const basePrice = selectedRide.routes?.price || 0;
+                  return (
+                    <button key={opt.value} onClick={() => setTripDirection(opt.value)}
+                      className={`px-2 py-3 rounded-xl text-center border-2 transition-colors ${
+                        tripDirection === opt.value ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:border-primary/50'
+                      }`}>
+                      <p className="text-sm font-medium">{lang === 'ar' ? opt.labelAr : opt.labelEn}</p>
+                      <p className="text-xs mt-1 opacity-80">{basePrice * opt.priceMultiplier} EGP</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Active Bundle */}
             {activeBundlePurchase && (
               <div className="bg-card border-2 border-secondary rounded-2xl p-5 space-y-3">
