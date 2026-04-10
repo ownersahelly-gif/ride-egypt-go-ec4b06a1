@@ -817,7 +817,7 @@ const Dashboard = () => {
         )}
 
         {step === 'details' && selectedRide && (
-          <div className="pointer-events-auto bg-card/95 backdrop-blur-md rounded-3xl shadow-2xl border border-border p-5 space-y-4 max-w-lg mx-auto max-h-[50vh] overflow-y-auto">
+          <div className="p-4 space-y-4">
             {/* Driver & Vehicle */}
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
