@@ -138,7 +138,6 @@ const DriverDashboard = () => {
         Math.sqrt(Math.pow(a.lat - b.lat, 2) + Math.pow(a.lng - b.lng, 2));
 
       // Build waypoints: all pickups then all dropoffs
-      type WP = { type: 'pickup' | 'dropoff'; bookingIdx: number; coords: { lat: number; lng: number }; label: string };
       const waypoints: WP[] = [];
       passengers.forEach((p, i) => {
         waypoints.push({ type: 'pickup', bookingIdx: i, coords: getPickupCoords(p), label: passengerProfiles[p.user_id]?.full_name || `Passenger ${i + 1}` });
