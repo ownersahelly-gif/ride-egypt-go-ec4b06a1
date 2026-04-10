@@ -222,7 +222,7 @@ const Signup = () => {
           user_id: userId,
           license_number: licenseNumber,
           vehicle_model: `${carBrand} ${carModel}`,
-          vehicle_plate: 'Pending',
+          vehicle_plate: licenseNumber,
           vehicle_year: parseInt(carYear),
           phone,
           id_front_url: uploads[1],

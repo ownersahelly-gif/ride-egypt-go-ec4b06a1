@@ -530,10 +530,10 @@ const AdminPanel = () => {
               <div key={app.id} className="bg-card border border-border rounded-xl p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <p className="font-medium text-foreground">{app.vehicle_model} · {app.vehicle_plate}</p>
+                    <p className="font-medium text-foreground">{app.vehicle_model} · {lang === 'ar' ? 'سنة' : 'Year'}: {app.vehicle_year}</p>
                     <p className="text-sm text-muted-foreground">
                       {app.phone && <>{lang === 'ar' ? 'الهاتف' : 'Phone'}: {app.phone} · </>}
-                      {lang === 'ar' ? 'الخبرة' : 'Experience'}: {app.experience_years} {lang === 'ar' ? 'سنة' : 'yrs'}
+                      {lang === 'ar' ? 'لوحة السيارة' : 'Plate'}: {app.license_number}
                     </p>
                     {app.was_uber_driver && (
                       <span className="inline-block text-xs bg-secondary/20 text-secondary px-2 py-0.5 rounded-full mt-1 font-medium">

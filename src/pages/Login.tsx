@@ -6,14 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Lock, ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ArrowLeft, Eye, EyeOff, Phone } from 'lucide-react';
 
 const Login = () => {
   const { signIn } = useAuth();
   const { t, lang } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +25,10 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await signIn(email, password);
+      const loginEmail = loginMethod === 'phone'
+        ? `${phone.replace(/[^0-9]/g, '')}@driver.massar.app`
+        : email;
+      await signIn(loginEmail, password);
       navigate('/dashboard');
     } catch (error: any) {
       toast({ title: t('auth.error'), description: error.message, variant: 'destructive' });
@@ -44,14 +49,39 @@ const Login = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="bg-card rounded-2xl shadow-card p-8 space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="email">{t('auth.email')}</Label>
-            <div className="relative">
-              <Mail className="absolute start-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input id="email" type="email" placeholder="name@example.com" className="ps-10"
-                value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </div>
+          {/* Toggle between email and phone login */}
+          <div className="flex rounded-lg border border-border overflow-hidden">
+            <button type="button"
+              onClick={() => setLoginMethod('email')}
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors ${loginMethod === 'email' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+              {lang === 'ar' ? 'بريد إلكتروني' : 'Email'}
+            </button>
+            <button type="button"
+              onClick={() => setLoginMethod('phone')}
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors ${loginMethod === 'phone' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+              {lang === 'ar' ? 'رقم الهاتف (سائق)' : 'Phone (Driver)'}
+            </button>
           </div>
+
+          {loginMethod === 'email' ? (
+            <div className="space-y-2">
+              <Label htmlFor="email">{t('auth.email')}</Label>
+              <div className="relative">
+                <Mail className="absolute start-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input id="email" type="email" placeholder="name@example.com" className="ps-10"
+                  value={email} onChange={(e) => setEmail(e.target.value)} required />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="phone">{lang === 'ar' ? 'رقم الهاتف' : 'Phone Number'}</Label>
+              <div className="relative">
+                <Phone className="absolute start-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input id="phone" type="tel" placeholder="01XXXXXXXXX" className="ps-10"
+                  value={phone} onChange={(e) => setPhone(e.target.value)} required />
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="password">{t('auth.password')}</Label>
