@@ -667,15 +667,35 @@ const DriverDashboard = () => {
                       </div>
                     </div>
 
+                    <div className="space-y-2">
+                      <Label>{lang === 'ar' ? 'نوع الرحلة' : 'Trip Type'}</Label>
+                      <div className="flex gap-2">
+                        {([
+                          { value: 'both', labelAr: 'ذهاب وعودة', labelEn: 'Both' },
+                          { value: 'go', labelAr: 'ذهاب فقط', labelEn: 'Going Only' },
+                          { value: 'return', labelAr: 'عودة فقط', labelEn: 'Return Only' },
+                        ] as const).map(opt => (
+                          <button key={opt.value} onClick={() => setScheduleForm(p => ({ ...p, trip_direction: opt.value }))}
+                            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                              scheduleForm.trip_direction === opt.value ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border'
+                            }`}>{lang === 'ar' ? opt.labelAr : opt.labelEn}</button>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs">{lang === 'ar' ? 'ذهاب' : 'Departure'}</Label>
-                        <Input type="time" value={scheduleForm.departure_time} onChange={e => setScheduleForm(p => ({ ...p, departure_time: e.target.value }))} />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">{lang === 'ar' ? 'عودة' : 'Return'}</Label>
-                        <Input type="time" value={scheduleForm.return_time} onChange={e => setScheduleForm(p => ({ ...p, return_time: e.target.value }))} />
-                      </div>
+                      {scheduleForm.trip_direction !== 'return' && (
+                        <div className="space-y-1">
+                          <Label className="text-xs">{lang === 'ar' ? 'ذهاب' : 'Departure'}</Label>
+                          <Input type="time" value={scheduleForm.departure_time} onChange={e => setScheduleForm(p => ({ ...p, departure_time: e.target.value }))} />
+                        </div>
+                      )}
+                      {scheduleForm.trip_direction !== 'go' && (
+                        <div className="space-y-1">
+                          <Label className="text-xs">{lang === 'ar' ? 'عودة' : 'Return'}</Label>
+                          <Input type="time" value={scheduleForm.return_time} onChange={e => setScheduleForm(p => ({ ...p, return_time: e.target.value }))} />
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-1">
