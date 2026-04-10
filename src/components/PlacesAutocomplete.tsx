@@ -11,9 +11,10 @@ interface PlacesAutocompleteProps {
   value?: string;
   onSelect: (place: { name: string; lat: number; lng: number }) => void;
   iconColor?: string;
+  className?: string;
 }
 
-const PlacesAutocomplete = ({ placeholder, value, onSelect, iconColor = 'text-primary' }: PlacesAutocompleteProps) => {
+const PlacesAutocomplete = ({ placeholder, value, onSelect, iconColor = 'text-primary', className }: PlacesAutocompleteProps) => {
   const [inputValue, setInputValue] = useState(value || '');
   const [predictions, setPredictions] = useState<google.maps.places.AutocompletePrediction[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
