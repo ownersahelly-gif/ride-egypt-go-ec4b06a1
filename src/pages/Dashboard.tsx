@@ -562,7 +562,7 @@ const Dashboard = () => {
 
       if (usingBundle && activeBundlePurchase) {
         await supabase.from('bundle_purchases').update({
-          rides_remaining: activeBundlePurchase.rides_remaining - 1,
+          rides_remaining: activeBundlePurchase.rides_remaining - (tripDirection === 'both' ? 2 : 1),
         }).eq('id', activeBundlePurchase.id);
       }
 
