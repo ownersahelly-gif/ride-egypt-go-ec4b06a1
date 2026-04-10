@@ -265,7 +265,8 @@ const Dashboard = () => {
     setNearestRoutePoint(nearest);
 
     // Use Google Directions API to get actual driving distance from nearest route point to the selected point
-    let drivingDistanceKm: number;
+    // We double it because the driver must go to the person AND come back to the route (round-trip)
+    let oneWayKm: number;
     if (nearest && typeof google !== 'undefined') {
       try {
         const directionsService = new google.maps.DirectionsService();
@@ -279,22 +280,21 @@ const Dashboard = () => {
           });
         });
         if (result?.routes?.[0]?.legs?.[0]) {
-          drivingDistanceKm = (result.routes[0].legs[0].distance?.value || 0) / 1000;
+          oneWayKm = (result.routes[0].legs[0].distance?.value || 0) / 1000;
         } else {
-          // Fallback to straight-line if directions fail
-          drivingDistanceKm = haversineDistanceKm(point, nearest);
+          oneWayKm = haversineDistanceKm(point, nearest);
         }
       } catch {
-        drivingDistanceKm = haversineDistanceKm(point, nearest);
+        oneWayKm = haversineDistanceKm(point, nearest);
       }
     } else {
-      // Fallback
-      drivingDistanceKm = nearest ? haversineDistanceKm(point, nearest) : 999;
+      oneWayKm = nearest ? haversineDistanceKm(point, nearest) : 999;
     }
 
-    const ok = drivingDistanceKm <= MAX_DISTANCE_KM;
-    const onRoute = drivingDistanceKm <= 0.1;
-    setResult({ ok, minutes: Math.round(drivingDistanceKm * 10) / 10, onRoute });
+    const roundTripKm = oneWayKm * 2; // detour = go to person + return to route
+    const ok = roundTripKm <= MAX_DISTANCE_KM;
+    const onRoute = oneWayKm <= 0.1;
+    setResult({ ok, minutes: Math.round(roundTripKm * 10) / 10, onRoute });
 
     if (!ok) {
       toast({
