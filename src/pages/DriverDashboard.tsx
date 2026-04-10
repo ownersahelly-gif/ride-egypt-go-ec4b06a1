@@ -68,24 +68,52 @@ const DriverDashboard = () => {
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
-      const [{ data: profileData }, { data: shuttleData }, { data: routesData }] = await Promise.all([
+      const today = new Date().toISOString().split('T')[0];
+      const [{ data: profileData }, { data: allShuttles }, { data: routesData }] = await Promise.all([
         supabase.from('profiles').select('*').eq('user_id', user.id).single(),
-        supabase.from('shuttles').select('*, routes(*)').eq('driver_id', user.id).limit(1).maybeSingle(),
+        supabase.from('shuttles').select('*, routes(*)').eq('driver_id', user.id),
         supabase.from('routes').select('*, stops(*)').eq('status', 'active'),
       ]);
       setProfile(profileData);
       setAllRoutes(routesData || []);
-      if (shuttleData) {
-        setShuttle(shuttleData);
-        setRoute(shuttleData.routes);
-        const [{ data: bookingsData }, { data: schedulesData }] = await Promise.all([
-          supabase.from('bookings').select('*, routes(*)').eq('shuttle_id', shuttleData.id).order('scheduled_date', { ascending: true }).limit(50),
-          supabase.from('driver_schedules').select('*, routes(name_en, name_ar, price, origin_name_en, origin_name_ar, destination_name_en, destination_name_ar, estimated_duration_minutes)').eq('driver_id', user.id).order('day_of_week'),
-        ]);
-        setBookings(bookingsData || []);
+
+      // Find the shuttle that has today's bookings, fallback to first active shuttle
+      let chosenShuttle: any = null;
+      let allBookings: any[] = [];
+      for (const s of (allShuttles || [])) {
+        const { data: bks } = await supabase
+          .from('bookings').select('*, routes(*)')
+          .eq('shuttle_id', s.id)
+          .eq('scheduled_date', today)
+          .neq('status', 'cancelled')
+          .order('scheduled_time', { ascending: true });
+        if (bks && bks.length > 0) {
+          chosenShuttle = s;
+          allBookings = bks;
+          break;
+        }
+      }
+      if (!chosenShuttle && allShuttles && allShuttles.length > 0) {
+        chosenShuttle = allShuttles.find((s: any) => s.status === 'active') || allShuttles[0];
+        // Fetch all bookings for fallback shuttle
+        const { data: bks } = await supabase
+          .from('bookings').select('*, routes(*)')
+          .eq('shuttle_id', chosenShuttle.id)
+          .order('scheduled_date', { ascending: true }).limit(50);
+        allBookings = bks || [];
+      }
+
+      if (chosenShuttle) {
+        setShuttle(chosenShuttle);
+        setRoute(chosenShuttle.routes);
+        setBookings(allBookings);
+        const { data: schedulesData } = await supabase
+          .from('driver_schedules')
+          .select('*, routes(name_en, name_ar, price, origin_name_en, origin_name_ar, destination_name_en, destination_name_ar, estimated_duration_minutes)')
+          .eq('driver_id', user.id).order('day_of_week');
         setDriverSchedules(schedulesData || []);
-        if (bookingsData && bookingsData.length > 0) {
-          const userIds = [...new Set(bookingsData.map((b: any) => b.user_id))];
+        if (allBookings.length > 0) {
+          const userIds = [...new Set(allBookings.map((b: any) => b.user_id))];
           const { data: profiles } = await supabase.from('profiles').select('user_id, full_name, phone').in('user_id', userIds);
           if (profiles) {
             const profileMap: Record<string, any> = {};
