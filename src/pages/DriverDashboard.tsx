@@ -34,6 +34,8 @@ const DriverDashboard = () => {
   const [expandedTrips, setExpandedTrips] = useState<Set<string>>(new Set());
   const [passengerProfiles, setPassengerProfiles] = useState<Record<string, any>>({});
   const [chatBookingId, setChatBookingId] = useState<string | null>(null);
+  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
+  const [expandedUpcoming, setExpandedUpcoming] = useState<string | null>(null);
   const [chatPassengerName, setChatPassengerName] = useState<string>('');
 
   // Schedule states
@@ -300,13 +302,13 @@ const DriverDashboard = () => {
       driver_id: user.id, route_id: quickAddDay.routeId, shuttle_id: quickAddDay.shuttleId,
       day_of_week: quickAddDay.day,
       departure_time: quickAddDir === 'go' ? quickAddTime : quickAddTime,
-      return_time: null,
+      return_time: quickAddDir === 'return' ? quickAddTime : null,
       is_recurring: true, is_active: true, min_passengers: 5,
     };
     const { error } = await supabase.from('driver_schedules').insert(entry);
     if (error) toast({ title: t('auth.error'), description: error.message, variant: 'destructive' });
     else {
-      toast({ title: lang === 'ar' ? 'تمت إضافة الوقت!' : 'Time slot added!' });
+      toast({ title: lang === 'ar' ? 'تمت إضافة الرحلة!' : 'Trip added!' });
       await generateRideInstances([entry]);
       const { data } = await supabase.from('driver_schedules').select('*, routes(name_en, name_ar, price, origin_name_en, origin_name_ar, destination_name_en, destination_name_ar, estimated_duration_minutes, origin_lat, origin_lng, destination_lat, destination_lng)').eq('driver_id', user.id).order('day_of_week');
       setDriverSchedules(data || []);
@@ -421,100 +423,312 @@ const DriverDashboard = () => {
                   </div>
                 </div>
 
-                {/* Next Trip / How it works card */}
+                {shuttle.status !== 'active' && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                    <p className="text-xs text-amber-700">
+                      {lang === 'ar' ? 'أنت غير متصل. شغّل الاتصال أعلاه حتى يتمكن الركاب من الحجز وتستطيع بدء الرحلة.' : 'You\'re offline. Go online above so riders can book and you can start trips.'}
+                    </p>
+                  </div>
+                )}
+
+                {/* ===== UPCOMING TRIPS ===== */}
                 {driverSchedules.length > 0 && (() => {
-                  // Find the next upcoming trip
                   const now = new Date();
-                  const todayStr = now.toISOString().split('T')[0];
                   const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
                   const todayDow = now.getDay();
-                  
-                  // Find next scheduled trip (today's remaining or next day)
-                  const allSchedulesSorted = [...driverSchedules].sort((a, b) => {
-                    if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
-                    return (a.departure_time || '').localeCompare(b.departure_time || '');
-                  });
-                  
-                  let nextTrip: any = null;
-                  let nextTripDate = '';
-                  let nextTripLabel = '';
-                  
-                  // Check today's remaining trips
-                  for (const s of allSchedulesSorted) {
-                    if (s.day_of_week === todayDow && s.departure_time?.slice(0, 5) > currentTime) {
-                      nextTrip = s;
-                      nextTripDate = todayStr;
-                      nextTripLabel = lang === 'ar' ? 'اليوم' : 'Today';
-                      break;
+
+                  // Build trip slots: each schedule → separate Go and Back entries
+                  type TripSlot = { scheduleId: string; routeId: string; routeInfo: any; day: number; time: string; direction: 'go' | 'back'; dayOffset: number; dateStr: string; };
+                  const tripSlots: TripSlot[] = [];
+
+                  for (const s of driverSchedules) {
+                    // Calculate date for next occurrence
+                    const getNextDate = (targetDow: number) => {
+                      let offset = targetDow - todayDow;
+                      if (offset < 0) offset += 7;
+                      if (offset === 0) return { offset: 0, dateStr: now.toISOString().split('T')[0] };
+                      const d = new Date(now);
+                      d.setDate(now.getDate() + offset);
+                      return { offset, dateStr: d.toISOString().split('T')[0] };
+                    };
+                    const { offset, dateStr } = getNextDate(s.day_of_week);
+
+                    // Go trip
+                    if (s.departure_time) {
+                      const isPast = offset === 0 && s.departure_time?.slice(0, 5) < currentTime;
+                      if (!isPast) {
+                        tripSlots.push({
+                          scheduleId: s.id, routeId: s.route_id, routeInfo: s.routes,
+                          day: s.day_of_week, time: s.departure_time?.slice(0, 5),
+                          direction: 'go', dayOffset: offset, dateStr,
+                        });
+                      }
                     }
-                  }
-                  // If no today trip, find next day
-                  if (!nextTrip) {
-                    for (let offset = 1; offset <= 7; offset++) {
-                      const checkDow = (todayDow + offset) % 7;
-                      const match = allSchedulesSorted.find(s => s.day_of_week === checkDow);
-                      if (match) {
-                        nextTrip = match;
-                        const futureDate = new Date(now);
-                        futureDate.setDate(now.getDate() + offset);
-                        nextTripDate = futureDate.toISOString().split('T')[0];
-                        nextTripLabel = offset === 1 ? (lang === 'ar' ? 'غداً' : 'Tomorrow') : dayNames[checkDow];
-                        break;
+                    // Back trip
+                    if (s.return_time) {
+                      const isPast = offset === 0 && s.return_time?.slice(0, 5) < currentTime;
+                      if (!isPast) {
+                        tripSlots.push({
+                          scheduleId: s.id, routeId: s.route_id, routeInfo: s.routes,
+                          day: s.day_of_week, time: s.return_time?.slice(0, 5),
+                          direction: 'back', dayOffset: offset, dateStr,
+                        });
                       }
                     }
                   }
-                  
-                  const nextTripBookings = nextTrip ? bookings.filter(b => {
-                    const bDow = new Date(b.scheduled_date).getDay();
-                    return b.route_id === nextTrip.route_id && bDow === nextTrip.day_of_week && b.status !== 'cancelled';
-                  }) : [];
-                  const nextGoCount = nextTripBookings.filter(b => b.trip_direction === 'go' || b.trip_direction === 'both').length;
-                  const nextReturnCount = nextTripBookings.filter(b => b.trip_direction === 'return' || b.trip_direction === 'both').length;
-                  
-                  if (!nextTrip) return null;
-                  const nextRouteInfo = nextTrip.routes;
-                  
-                  return (
-                    <div className="bg-card border-2 border-primary/30 rounded-2xl p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Play className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="text-xs text-primary font-medium">{lang === 'ar' ? 'الرحلة القادمة' : 'Next Trip'} · {nextTripLabel}</p>
-                            <p className="font-semibold text-foreground">{lang === 'ar' ? nextRouteInfo?.name_ar : nextRouteInfo?.name_en}</p>
-                          </div>
-                        </div>
-                        <div className="text-end">
-                          <p className="text-lg font-bold text-foreground">{nextTrip.departure_time?.slice(0, 5)}</p>
-                          {nextTrip.return_time && <p className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'عودة' : 'Back'} {nextTrip.return_time?.slice(0, 5)}</p>}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-3 text-xs">
-                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full">{lang === 'ar' ? `ذهاب ${nextGoCount}` : `Go ${nextGoCount}`}</span>
-                        <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{lang === 'ar' ? `عودة ${nextReturnCount}` : `Back ${nextReturnCount}`}</span>
-                        <span className="text-muted-foreground">{nextTripBookings.length} {lang === 'ar' ? 'راكب' : 'total'}</span>
-                      </div>
 
-                      {nextTripLabel === (lang === 'ar' ? 'اليوم' : 'Today') && todayBookings.length > 0 && shuttle.status === 'active' && (
-                        <Link to="/active-ride">
-                          <Button className="w-full h-12 text-base rounded-xl" size="lg">
-                            <Play className="w-5 h-5 me-2" />
-                            {lang === 'ar' ? 'ابدأ الرحلة الآن' : 'Start This Trip'}
-                          </Button>
-                        </Link>
+                  // Sort: today first, then by day offset, then by time
+                  tripSlots.sort((a, b) => {
+                    if (a.dayOffset !== b.dayOffset) return a.dayOffset - b.dayOffset;
+                    return a.time.localeCompare(b.time);
+                  });
+
+                  const displaySlots = showAllUpcoming ? tripSlots : tripSlots.slice(0, 3);
+
+                  if (tripSlots.length === 0) return null;
+
+                  const getDayLabel = (offset: number, dow: number) => {
+                    if (offset === 0) return lang === 'ar' ? 'اليوم' : 'Today';
+                    if (offset === 1) return lang === 'ar' ? 'غداً' : 'Tomorrow';
+                    return dayNames[dow];
+                  };
+
+                  return (
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-foreground flex items-center gap-2">
+                        <Navigation className="w-4 h-4 text-primary" />
+                        {lang === 'ar' ? 'الرحلات القادمة' : 'Upcoming Trips'}
+                      </h3>
+
+                      {displaySlots.map((slot) => {
+                        const key = `${slot.scheduleId}_${slot.direction}`;
+                        const isExpanded = expandedUpcoming === key;
+
+                        // Get passenger count for THIS specific slot
+                        const slotBookings = bookings.filter(b => {
+                          if (b.route_id !== slot.routeId || b.status === 'cancelled') return false;
+                          const bDow = new Date(b.scheduled_date).getDay();
+                          if (bDow !== slot.day) return false;
+                          // Match direction
+                          if (slot.direction === 'go') return b.trip_direction === 'go' || b.trip_direction === 'both';
+                          return b.trip_direction === 'return' || b.trip_direction === 'both';
+                        });
+
+                        const isToday = slot.dayOffset === 0;
+                        const canStart = isToday && shuttle.status === 'active' && slotBookings.length > 0;
+
+                        const routeOrigin = { lat: slot.routeInfo?.origin_lat || 0, lng: slot.routeInfo?.origin_lng || 0 };
+                        const routeDestination = { lat: slot.routeInfo?.destination_lat || 0, lng: slot.routeInfo?.destination_lng || 0 };
+                        const displayOrigin = slot.direction === 'go'
+                          ? (lang === 'ar' ? slot.routeInfo?.origin_name_ar : slot.routeInfo?.origin_name_en)
+                          : (lang === 'ar' ? slot.routeInfo?.destination_name_ar : slot.routeInfo?.destination_name_en);
+                        const displayDest = slot.direction === 'go'
+                          ? (lang === 'ar' ? slot.routeInfo?.destination_name_ar : slot.routeInfo?.destination_name_en)
+                          : (lang === 'ar' ? slot.routeInfo?.origin_name_ar : slot.routeInfo?.origin_name_en);
+
+                        return (
+                          <div key={key} className={`bg-card border rounded-2xl overflow-hidden transition-all ${
+                            slot.direction === 'go' ? 'border-green-200' : 'border-blue-200'
+                          }`}>
+                            <button
+                              onClick={() => setExpandedUpcoming(isExpanded ? null : key)}
+                              className="w-full p-4 text-start hover:bg-muted/30 transition-colors"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${
+                                    slot.direction === 'go' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                                  }`}>
+                                    {slot.direction === 'go' ? '→' : '←'}
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                                        slot.direction === 'go' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                                      }`}>
+                                        {slot.direction === 'go' ? (lang === 'ar' ? 'ذهاب' : 'Going') : (lang === 'ar' ? 'عودة' : 'Returning')}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground">{getDayLabel(slot.dayOffset, slot.day)}</span>
+                                    </div>
+                                    <p className="text-sm font-medium text-foreground mt-0.5">{displayOrigin} → {displayDest}</p>
+                                    <p className="text-xs text-muted-foreground">{slotBookings.length} {lang === 'ar' ? 'راكب' : 'passengers'}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <div className="text-end">
+                                    <p className="text-lg font-bold text-foreground">{slot.time}</p>
+                                  </div>
+                                  {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                                </div>
+                              </div>
+                            </button>
+
+                            {/* Expanded detail */}
+                            {isExpanded && (
+                              <div className="border-t border-border p-4 space-y-3">
+                                {/* Status message */}
+                                {!isToday && (
+                                  <div className="bg-muted/50 rounded-xl p-3 flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-muted-foreground" />
+                                    <p className="text-sm text-muted-foreground">
+                                      {lang === 'ar'
+                                        ? `ستبدأ هذه الرحلة ${getDayLabel(slot.dayOffset, slot.day)} الساعة ${slot.time}`
+                                        : `This trip starts ${getDayLabel(slot.dayOffset, slot.day)} at ${slot.time}`}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {isToday && !canStart && slotBookings.length === 0 && (
+                                  <div className="bg-muted/50 rounded-xl p-3 flex items-center gap-2">
+                                    <Users className="w-4 h-4 text-muted-foreground" />
+                                    <p className="text-sm text-muted-foreground">
+                                      {lang === 'ar' ? 'لا يوجد ركاب بعد. الرحلة تبدأ عند وصول الحجوزات' : 'No passengers yet. Trip starts when bookings arrive.'}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {canStart && (
+                                  <Link to="/active-ride">
+                                    <Button className="w-full h-12 text-base rounded-xl" size="lg">
+                                      <Play className="w-5 h-5 me-2" />
+                                      {lang === 'ar' ? 'ابدأ الرحلة الآن' : 'Start This Trip'}
+                                    </Button>
+                                  </Link>
+                                )}
+
+                                {isToday && shuttle.status !== 'active' && slotBookings.length > 0 && (
+                                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
+                                    {lang === 'ar' ? 'شغّل الاتصال لبدء الرحلة' : 'Go online to start this trip'}
+                                  </div>
+                                )}
+
+                                {/* Map */}
+                                {slot.routeInfo?.origin_lat && slot.routeInfo?.destination_lat && (
+                                  <MapView
+                                    className="h-44 rounded-xl overflow-hidden"
+                                    markers={[
+                                      { lat: slot.direction === 'go' ? routeOrigin.lat : routeDestination.lat, lng: slot.direction === 'go' ? routeOrigin.lng : routeDestination.lng, label: 'A', color: 'green' },
+                                      { lat: slot.direction === 'go' ? routeDestination.lat : routeOrigin.lat, lng: slot.direction === 'go' ? routeDestination.lng : routeOrigin.lng, label: 'B', color: 'red' },
+                                    ]}
+                                    origin={slot.direction === 'go' ? routeOrigin : routeDestination}
+                                    destination={slot.direction === 'go' ? routeDestination : routeOrigin}
+                                    showDirections
+                                    showUserLocation={false}
+                                    zoom={10}
+                                  />
+                                )}
+
+                                {/* Passengers */}
+                                {slotBookings.length > 0 ? (
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-medium text-muted-foreground">
+                                      {lang === 'ar' ? `الركاب (${slotBookings.length})` : `Passengers (${slotBookings.length})`}
+                                    </p>
+                                    {slotBookings.map(b => {
+                                      const passenger = passengerProfiles[b.user_id];
+                                      const name = passenger?.full_name || (lang === 'ar' ? 'راكب' : 'Rider');
+                                      return (
+                                        <div key={b.id} className="flex items-center justify-between bg-surface rounded-xl px-3 py-2">
+                                          <div className="flex items-center gap-2">
+                                            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                                              <User className="w-3.5 h-3.5 text-primary" />
+                                            </div>
+                                            <div>
+                                              <p className="text-xs font-medium text-foreground">{name}</p>
+                                              <p className="text-[10px] text-muted-foreground">
+                                                {b.custom_pickup_name && <><MapPin className="w-3 h-3 inline text-green-500" /> {b.custom_pickup_name} · </>}
+                                                {b.seats} {t('booking.seat')} · {b.scheduled_time?.slice(0, 5)}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-1.5">
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${statusColors[b.status]}`}>{t(`booking.status.${b.status}`)}</span>
+                                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); setChatBookingId(b.id); setChatPassengerName(name); }}>
+                                              <MessageCircle className="w-3.5 h-3.5 text-primary" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground text-center py-2">{lang === 'ar' ? 'لا يوجد ركاب' : 'No passengers'}</p>
+                                )}
+
+                                {/* Delete schedule */}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full text-destructive border-destructive/30 hover:bg-destructive/10"
+                                  onClick={() => deleteSchedule(slot.scheduleId)}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 me-1" />
+                                  {lang === 'ar' ? 'حذف هذه الرحلة' : 'Remove this trip'}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {tripSlots.length > 3 && (
+                        <button
+                          onClick={() => setShowAllUpcoming(!showAllUpcoming)}
+                          className="w-full text-center text-sm text-primary hover:underline py-2"
+                        >
+                          {showAllUpcoming
+                            ? (lang === 'ar' ? 'عرض أقل' : 'Show less')
+                            : (lang === 'ar' ? `عرض الكل (${tripSlots.length} رحلة)` : `Show all (${tripSlots.length} trips)`)}
+                        </button>
                       )}
-                      
-                      {shuttle.status !== 'active' && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
-                          <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                          <p className="text-xs text-amber-700">
-                            {lang === 'ar' ? 'أنت غير متصل. شغّل الاتصال أعلاه حتى يتمكن الركاب من الحجز وتستطيع بدء الرحلة.' : 'You\'re offline. Go online above so riders can book and you can start trips.'}
-                          </p>
-                        </div>
-                      )}
+
+                      {/* Quick add new time slot */}
+                      {(() => {
+                        const routeIds = [...new Set(driverSchedules.map(s => s.route_id))];
+                        if (routeIds.length === 0) return null;
+                        const firstRoute = driverSchedules[0]?.routes;
+                        const isQuickAdding = quickAddDay !== null;
+                        return (
+                          <div>
+                            {!isQuickAdding ? (
+                              <Button variant="outline" size="sm" className="w-full" onClick={() => setQuickAddDay({ routeId: routeIds[0], day: todayDow, shuttleId: shuttle.id })}>
+                                <Plus className="w-4 h-4 me-1" />
+                                {lang === 'ar' ? 'إضافة رحلة جديدة' : 'Add new trip'}
+                              </Button>
+                            ) : (
+                              <div className="bg-card border border-primary/20 rounded-2xl p-4 space-y-3">
+                                <p className="text-sm font-medium text-foreground">{lang === 'ar' ? 'إضافة رحلة جديدة' : 'Add new trip'}</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {dayNames.map((name, i) => (
+                                    <button key={i} onClick={() => setQuickAddDay(prev => prev ? { ...prev, day: i } : null)}
+                                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                                        quickAddDay?.day === i ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-muted-foreground border-border'
+                                      }`}>{name}</button>
+                                  ))}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <select value={quickAddDir} onChange={e => setQuickAddDir(e.target.value as 'go' | 'return')}
+                                    className="h-9 rounded-md border border-input bg-background px-2 text-sm">
+                                    <option value="go">{lang === 'ar' ? '→ ذهاب' : '→ Going'}</option>
+                                    <option value="return">{lang === 'ar' ? '← عودة' : '← Returning'}</option>
+                                  </select>
+                                  <Input type="time" value={quickAddTime} onChange={e => setQuickAddTime(e.target.value)} className="flex-1 h-9" />
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button size="sm" className="flex-1" onClick={quickAddTimeSlot} disabled={savingQuickAdd}>
+                                    {savingQuickAdd ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4 me-1" />}
+                                    {lang === 'ar' ? 'إضافة' : 'Add'}
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => setQuickAddDay(null)}>
+                                    {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })()}
@@ -547,37 +761,6 @@ const DriverDashboard = () => {
                   </div>
                 </div>
 
-                {/* Today's riders */}
-                <div className="bg-card border border-border rounded-2xl p-4">
-                  <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                    <Users className="w-4 h-4 text-primary" />
-                    {lang === 'ar' ? `ركاب اليوم (${todayBookings.length})` : `Today's Riders (${todayBookings.length})`}
-                  </h3>
-                  {todayBookings.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">{lang === 'ar' ? 'لا يوجد حجوزات اليوم' : 'No bookings today'}</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {todayBookings.map(b => {
-                        const passenger = passengerProfiles[b.user_id];
-                        return (
-                          <div key={b.id} className="flex items-center justify-between bg-surface rounded-xl px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                <User className="w-4 h-4 text-primary" />
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-foreground">{passenger?.full_name || (lang === 'ar' ? 'راكب' : 'Rider')}</p>
-                                <p className="text-xs text-muted-foreground">{b.scheduled_time?.slice(0, 5)} · {b.seats} {t('booking.seat')}</p>
-                              </div>
-                            </div>
-                            <span className={`text-xs px-2 py-1 rounded-full ${statusColors[b.status]}`}>{t(`booking.status.${b.status}`)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
                 {/* Prompt if no schedule */}
                 {driverSchedules.length === 0 && (
                   <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5">
@@ -588,161 +771,6 @@ const DriverDashboard = () => {
                     </Button>
                   </div>
                 )}
-
-                {/* Active routes with bookings */}
-                {driverSchedules.length > 0 && (() => {
-                  const routeGroups = driverSchedules.reduce((acc: Record<string, any[]>, s) => {
-                    if (!acc[s.route_id]) acc[s.route_id] = [];
-                    acc[s.route_id].push(s);
-                    return acc;
-                  }, {});
-                  return (
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-foreground flex items-center gap-2">
-                        <Route className="w-4 h-4 text-primary" />
-                        {lang === 'ar' ? 'مساراتك النشطة' : 'Your Active Routes'}
-                      </h3>
-                      {Object.entries(routeGroups).map(([routeId, schedules]) => {
-                        const routeInfo = (schedules as any[])[0]?.routes;
-                        const routeBookings = bookings.filter(b => b.route_id === routeId && b.status !== 'cancelled');
-                        // Group bookings by day of week
-                        const bookingsByDay: Record<number, any[]> = {};
-                        routeBookings.forEach(b => {
-                          const dayOfWeek = new Date(b.scheduled_date).getDay();
-                          if (!bookingsByDay[dayOfWeek]) bookingsByDay[dayOfWeek] = [];
-                          bookingsByDay[dayOfWeek].push(b);
-                        });
-                        const openGoogleMapsNav = () => {
-                          if (routeInfo?.origin_lat && routeInfo?.origin_lng) {
-                            window.open(`https://www.google.com/maps/dir/?api=1&destination=${routeInfo.origin_lat},${routeInfo.origin_lng}&travelmode=driving`, '_blank');
-                          }
-                        };
-                        return (
-                          <div key={routeId} className="bg-card border border-primary/20 rounded-2xl p-4 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h4 className="font-semibold text-foreground">{lang === 'ar' ? routeInfo?.name_ar : routeInfo?.name_en}</h4>
-                                <p className="text-xs text-muted-foreground">
-                                  {lang === 'ar' ? routeInfo?.origin_name_ar : routeInfo?.origin_name_en} → {lang === 'ar' ? routeInfo?.destination_name_ar : routeInfo?.destination_name_en}
-                                </p>
-                              </div>
-                              <span className="text-sm font-bold text-foreground">{routeInfo?.price} EGP</span>
-                            </div>
-                            {routeInfo?.origin_lat && routeInfo?.destination_lat && (
-                              <div className="relative cursor-pointer" onClick={openGoogleMapsNav}>
-                                <MapView
-                                  className="h-[150px]"
-                                  markers={[
-                                    { lat: routeInfo.origin_lat, lng: routeInfo.origin_lng, label: 'A', color: 'green' },
-                                    { lat: routeInfo.destination_lat, lng: routeInfo.destination_lng, label: 'B', color: 'red' },
-                                  ]}
-                                  origin={{ lat: routeInfo.origin_lat, lng: routeInfo.origin_lng }}
-                                  destination={{ lat: routeInfo.destination_lat, lng: routeInfo.destination_lng }}
-                                  showDirections
-                                  showUserLocation={false}
-                                  zoom={10}
-                                />
-                                <div className="absolute bottom-2 start-2 bg-card/90 backdrop-blur-sm rounded-lg px-2 py-1 flex items-center gap-1 text-xs text-primary shadow">
-                                  <Navigation className="w-3 h-3" />
-                                  {lang === 'ar' ? 'اضغط للتنقل' : 'Tap to navigate'}
-                                </div>
-                              </div>
-                            )}
-                             {/* Per-day passenger breakdown with go/return counts */}
-                            <div className="space-y-1.5">
-                              {(schedules as any[]).sort((a: any, b: any) => a.day_of_week - b.day_of_week).map((s: any) => {
-                                const dayBookings = bookingsByDay[s.day_of_week] || [];
-                                const goCount = dayBookings.filter((b: any) => b.trip_direction === 'go' || b.trip_direction === 'both').length;
-                                const returnCount = dayBookings.filter((b: any) => b.trip_direction === 'return' || b.trip_direction === 'both').length;
-                                const isQuickAdding = quickAddDay?.routeId === routeId && quickAddDay?.day === s.day_of_week;
-                                return (
-                                  <div key={s.id}>
-                                    <div className="flex items-center justify-between bg-surface rounded-lg px-3 py-2">
-                                      <div className="flex items-center gap-2 text-sm">
-                                        <span className="font-medium text-foreground w-16">{dayNames[s.day_of_week]}</span>
-                                        {s.departure_time && <><Clock className="w-3.5 h-3.5 text-muted-foreground" /><span className="text-muted-foreground">{s.departure_time?.slice(0, 5)}</span></>}
-                                        {s.return_time && <><ArrowRight className="w-3 h-3 text-muted-foreground" /><span className="text-muted-foreground">{s.return_time?.slice(0, 5)}</span></>}
-                                      </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
-                                          {lang === 'ar' ? `ذهاب ${goCount}` : `Go ${goCount}`}
-                                        </span>
-                                        <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">
-                                          {lang === 'ar' ? `عودة ${returnCount}` : `Back ${returnCount}`}
-                                        </span>
-                                        <button
-                                          onClick={() => isQuickAdding ? setQuickAddDay(null) : setQuickAddDay({ routeId, day: s.day_of_week, shuttleId: shuttle.id })}
-                                          className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors"
-                                          title={lang === 'ar' ? 'إضافة وقت' : 'Add time'}
-                                        >
-                                          <Plus className="w-3 h-3" />
-                                        </button>
-                                      </div>
-                                    </div>
-                                    {/* Quick add inline form */}
-                                    {isQuickAdding && (
-                                      <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 rounded-lg mt-1">
-                                        <select value={quickAddDir} onChange={e => setQuickAddDir(e.target.value as 'go' | 'return')}
-                                          className="h-8 rounded-md border border-input bg-background px-2 text-xs">
-                                          <option value="go">{lang === 'ar' ? 'ذهاب' : 'Go'}</option>
-                                          <option value="return">{lang === 'ar' ? 'عودة' : 'Back'}</option>
-                                        </select>
-                                        <Input type="time" value={quickAddTime} onChange={e => setQuickAddTime(e.target.value)} className="h-8 w-24 text-xs" />
-                                        <Button size="sm" className="h-8 text-xs px-3" onClick={quickAddTimeSlot} disabled={savingQuickAdd}>
-                                          {savingQuickAdd ? <Loader2 className="w-3 h-3 animate-spin" /> : (lang === 'ar' ? 'إضافة' : 'Add')}
-                                        </Button>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                            {/* Passenger list */}
-                            {routeBookings.length > 0 && (
-                              <div className="space-y-1.5">
-                                <p className="text-xs font-medium text-muted-foreground">
-                                  <Users className="w-3 h-3 inline me-1" />
-                                  {lang === 'ar' ? `إجمالي الركاب (${routeBookings.length})` : `Total Passengers (${routeBookings.length})`}
-                                </p>
-                                {routeBookings.slice(0, 5).map(b => {
-                                  const passenger = passengerProfiles[b.user_id];
-                                  const dirLabel = b.trip_direction === 'go' ? (lang === 'ar' ? 'ذهاب' : 'Go') : b.trip_direction === 'return' ? (lang === 'ar' ? 'عودة' : 'Back') : (lang === 'ar' ? 'ذهاب+عودة' : 'Round');
-                                  const dirColor = b.trip_direction === 'go' ? 'bg-green-100 text-green-700' : b.trip_direction === 'return' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700';
-                                  return (
-                                    <div key={b.id} className="flex items-center justify-between bg-surface rounded-xl px-3 py-2">
-                                      <div className="flex items-center gap-2">
-                                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center"><User className="w-3.5 h-3.5 text-primary" /></div>
-                                        <div>
-                                          <p className="text-xs font-medium text-foreground">{passenger?.full_name || (lang === 'ar' ? 'راكب' : 'Rider')}</p>
-                                          <p className="text-[10px] text-muted-foreground">{dayNames[new Date(b.scheduled_date).getDay()]} · {b.scheduled_time?.slice(0, 5)} · {b.seats} {t('booking.seat')}</p>
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${dirColor}`}>{dirLabel}</span>
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${statusColors[b.status]}`}>{t(`booking.status.${b.status}`)}</span>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                                {routeBookings.length > 5 && (
-                                  <p className="text-xs text-primary text-center cursor-pointer" onClick={() => setTab('trips')}>
-                                    +{routeBookings.length - 5} {lang === 'ar' ? 'المزيد' : 'more'}
-                                  </p>
-                                )}
-                              </div>
-                            )}
-                            <Button variant="outline" size="sm" onClick={() => { setTab('schedule'); openScheduleForRoute(allRoutes.find(r => r.id === routeId) || routeInfo); }} className="w-full">
-                              <Calendar className="w-3.5 h-3.5 me-1" />{lang === 'ar' ? 'تعديل الجدول' : 'Edit Schedule'}
-                            </Button>
-                          </div>
-                        );
-                      })}
-                      <Button variant="outline" size="sm" onClick={() => setTab('schedule')} className="w-full">
-                        <Plus className="w-4 h-4 me-1" />{lang === 'ar' ? 'إضافة مسار آخر' : 'Add Another Route'}
-                      </Button>
-                    </div>
-                  );
-                })()}
 
                 {/* All-time stats */}
                 <div className="bg-card border border-border rounded-2xl p-4">
