@@ -104,6 +104,9 @@ const AdminPanel = () => {
     }
 
     if (settingsRes.data) setInstapayPhone(settingsRes.data.value);
+    // Fetch global waiting time
+    const { data: waitData } = await supabase.from('app_settings').select('value').eq('key', 'stop_waiting_time_minutes').single();
+    if (waitData) setGlobalWaitingTime(waitData.value);
     setBundles(bundlesRes.data || []);
     const cvs = carpoolVerRes.data || [];
     setCarpoolVerifications(cvs);
@@ -258,29 +261,74 @@ const AdminPanel = () => {
       return;
     }
     setExpandedRouteStops(routeId);
-    setStopForm({ name_en: '', name_ar: '', lat: 0, lng: 0, stop_type: 'both', stop_order: (routeStopsMap[routeId]?.length || 0) });
+    setStopForm({ name_en: '', name_ar: '', lat: 0, lng: 0, stop_type: 'both', stop_order: (routeStopsMap[routeId]?.length || 0), arrival_time: '' });
+    setEditingStopId(null);
     if (!routeStopsMap[routeId]) await fetchStopsForRoute(routeId);
   };
 
   const addStop = async (routeId: string) => {
     if (!stopForm.name_en || !stopForm.name_ar) return;
     setAddingStop(true);
-    const { error } = await supabase.from('stops').insert({
-      route_id: routeId,
-      name_en: stopForm.name_en,
-      name_ar: stopForm.name_ar,
-      lat: stopForm.lat,
-      lng: stopForm.lng,
-      stop_type: stopForm.stop_type,
-      stop_order: stopForm.stop_order,
-    });
-    if (error) toast.error(error.message);
-    else {
-      toast.success(lang === 'ar' ? 'تمت إضافة نقطة التوقف' : 'Stop added');
-      setStopForm({ name_en: '', name_ar: '', lat: 0, lng: 0, stop_type: 'both', stop_order: (routeStopsMap[routeId]?.length || 0) + 1 });
-      await fetchStopsForRoute(routeId);
+    if (editingStopId) {
+      const { error } = await supabase.from('stops').update({
+        name_en: stopForm.name_en,
+        name_ar: stopForm.name_ar,
+        lat: stopForm.lat,
+        lng: stopForm.lng,
+        stop_type: stopForm.stop_type,
+        stop_order: stopForm.stop_order,
+        arrival_time: stopForm.arrival_time || null,
+      }).eq('id', editingStopId);
+      if (error) toast.error(error.message);
+      else {
+        toast.success(lang === 'ar' ? 'تم تحديث نقطة التوقف' : 'Stop updated');
+        setEditingStopId(null);
+        setStopForm({ name_en: '', name_ar: '', lat: 0, lng: 0, stop_type: 'both', stop_order: (routeStopsMap[routeId]?.length || 0), arrival_time: '' });
+        await fetchStopsForRoute(routeId);
+      }
+    } else {
+      const { error } = await supabase.from('stops').insert({
+        route_id: routeId,
+        name_en: stopForm.name_en,
+        name_ar: stopForm.name_ar,
+        lat: stopForm.lat,
+        lng: stopForm.lng,
+        stop_type: stopForm.stop_type,
+        stop_order: stopForm.stop_order,
+        arrival_time: stopForm.arrival_time || null,
+      });
+      if (error) toast.error(error.message);
+      else {
+        toast.success(lang === 'ar' ? 'تمت إضافة نقطة التوقف' : 'Stop added');
+        setStopForm({ name_en: '', name_ar: '', lat: 0, lng: 0, stop_type: 'both', stop_order: (routeStopsMap[routeId]?.length || 0) + 1, arrival_time: '' });
+        await fetchStopsForRoute(routeId);
+      }
     }
     setAddingStop(false);
+  };
+
+  const startEditStop = (stop: any) => {
+    setEditingStopId(stop.id);
+    setStopForm({
+      name_en: stop.name_en,
+      name_ar: stop.name_ar,
+      lat: stop.lat,
+      lng: stop.lng,
+      stop_type: stop.stop_type,
+      stop_order: stop.stop_order,
+      arrival_time: stop.arrival_time || '',
+    });
+  };
+
+  const saveGlobalWaitingTime = async () => {
+    setSavingWaitingTime(true);
+    const { error } = await supabase.from('app_settings').upsert(
+      { key: 'stop_waiting_time_minutes', value: globalWaitingTime },
+      { onConflict: 'key' }
+    );
+    if (error) toast.error(error.message);
+    else toast.success(lang === 'ar' ? 'تم حفظ وقت الانتظار' : 'Waiting time saved');
+    setSavingWaitingTime(false);
   };
 
   const deleteStop = async (stopId: string, routeId: string) => {
