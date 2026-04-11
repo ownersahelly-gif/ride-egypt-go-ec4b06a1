@@ -188,14 +188,19 @@ const BookRide = () => {
   useEffect(() => {
     if (!selectedRide?.routes || typeof google === 'undefined' || !google?.maps?.DirectionsService) { setRouteDirections(null); return; }
     const ds = new google.maps.DirectionsService();
+    const wps = routeStops.map((s: any) => ({
+      location: new google.maps.LatLng(s.lat, s.lng),
+      stopover: true,
+    }));
     ds.route({
       origin: { lat: selectedRide.routes.origin_lat, lng: selectedRide.routes.origin_lng },
       destination: { lat: selectedRide.routes.destination_lat, lng: selectedRide.routes.destination_lng },
+      waypoints: wps.length > 0 ? wps : undefined,
       travelMode: google.maps.TravelMode.DRIVING,
     }, (result, status) => {
       if (status === 'OK' && result) setRouteDirections(result);
     });
-  }, [selectedRide?.route_id]);
+  }, [selectedRide?.route_id, routeStops]);
 
   const selectRide = async (ride: any) => {
     setSelectedRide(ride);
