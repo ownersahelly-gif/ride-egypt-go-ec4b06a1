@@ -79,12 +79,12 @@ const CarpoolVerify = () => {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" /></div>;
+  if (loading) return <div className="h-screen flex items-center justify-center overflow-hidden"><div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" /></div>;
 
   if (verification?.status === 'approved') {
     return (
-      <div className="min-h-screen bg-background pb-20" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-        <div className="bg-primary text-primary-foreground px-4 pt-12 pb-6">
+      <div className="h-screen bg-background flex flex-col overflow-hidden" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <div className="bg-primary text-primary-foreground px-4 pt-12 pb-6 shrink-0 safe-area-top">
           <button onClick={() => navigate('/carpool')} className="mb-3"><Back className="w-6 h-6" /></button>
           <h1 className="text-xl font-bold">{lang === 'ar' ? 'التحقق من الهوية' : 'Identity Verification'}</h1>
         </div>
@@ -101,8 +101,8 @@ const CarpoolVerify = () => {
 
   if (verification?.status === 'pending') {
     return (
-      <div className="min-h-screen bg-background pb-20" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-        <div className="bg-primary text-primary-foreground px-4 pt-12 pb-6">
+      <div className="h-screen bg-background flex flex-col overflow-hidden" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+        <div className="bg-primary text-primary-foreground px-4 pt-12 pb-6 shrink-0 safe-area-top">
           <button onClick={() => navigate('/carpool')} className="mb-3"><Back className="w-6 h-6" /></button>
           <h1 className="text-xl font-bold">{lang === 'ar' ? 'التحقق من الهوية' : 'Identity Verification'}</h1>
         </div>
@@ -126,8 +126,8 @@ const CarpoolVerify = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background pb-20" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <div className="bg-primary text-primary-foreground px-4 pt-12 pb-6">
+    <div className="h-screen bg-background flex flex-col overflow-hidden" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <div className="bg-primary text-primary-foreground px-4 pt-12 pb-6 shrink-0 safe-area-top">
         <button onClick={() => navigate('/carpool')} className="mb-3"><Back className="w-6 h-6" /></button>
         <h1 className="text-xl font-bold">{lang === 'ar' ? 'التحقق من الهوية' : 'Identity Verification'}</h1>
         <p className="text-sm text-primary-foreground/70 mt-1">
@@ -135,7 +135,7 @@ const CarpoolVerify = () => {
         </p>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
         <Card>
           <CardHeader><CardTitle className="text-base">{lang === 'ar' ? 'معلومات السيارة' : 'Vehicle Info'}</CardTitle></CardHeader>
           <CardContent className="space-y-3">

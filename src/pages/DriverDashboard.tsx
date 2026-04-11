@@ -391,7 +391,7 @@ const DriverDashboard = () => {
     { key: 'trips', icon: Navigation, label: lang === 'ar' ? 'الرحلات' : 'Trips' },
   ];
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  if (loading) return <div className="h-screen flex items-center justify-center overflow-hidden"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   const todayBookings = bookings.filter(b => b.scheduled_date === new Date().toISOString().split('T')[0] && b.status !== 'cancelled');
   const completedBookings = bookings.filter(b => b.status === 'completed');
@@ -413,8 +413,8 @@ const DriverDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-surface">
-      <header className="bg-card border-b border-border sticky top-0 z-40">
+    <div className="h-screen bg-surface flex flex-col overflow-hidden">
+      <header className="bg-card border-b border-border shrink-0 z-40 safe-area-top">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
           <Link to="/" className="text-2xl font-bold text-primary font-arabic">{lang === 'ar' ? 'مسار' : 'Massar'}</Link>
           <div className="flex items-center gap-2">
@@ -425,7 +425,7 @@ const DriverDashboard = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 max-w-2xl">
+      <div className="flex-1 overflow-y-auto container mx-auto px-4 py-6 max-w-2xl pb-24">
         {!shuttle && (
           <div className="bg-card rounded-2xl border border-border p-12 text-center">
             <Clock className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />

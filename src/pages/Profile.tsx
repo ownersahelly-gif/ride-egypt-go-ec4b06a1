@@ -39,15 +39,15 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-surface">
-      <header className="bg-card border-b border-border sticky top-0 z-40">
+    <div className="h-screen bg-surface flex flex-col overflow-hidden">
+      <header className="bg-card border-b border-border shrink-0 z-40 safe-area-top">
         <div className="container mx-auto flex items-center h-16 px-4 gap-4">
           <Link to="/dashboard"><Button variant="ghost" size="icon"><Back className="w-5 h-5" /></Button></Link>
           <h1 className="text-lg font-bold text-foreground">{t('profile.title')}</h1>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-lg">
+      <main className="flex-1 overflow-y-auto container mx-auto px-4 py-8 max-w-lg pb-24">
         <div className="flex justify-center mb-6">
           <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
             <User className="w-10 h-10 text-primary" />
@@ -75,7 +75,7 @@ const Profile = () => {
           </Button>
         </form>
       </main>
-      <div className="h-20" />
+      
       <BottomNav />
     </div>
   );

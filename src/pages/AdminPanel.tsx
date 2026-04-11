@@ -483,7 +483,7 @@ const AdminPanel = () => {
   const waitlistBookings = bookings.filter(b => b.status === 'waitlist').sort((a, b) => (a.waitlist_position || 0) - (b.waitlist_position || 0));
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+    return <div className="h-screen flex items-center justify-center overflow-hidden"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
 
   if (!isAdmin) {
@@ -536,9 +536,9 @@ const AdminPanel = () => {
   };
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="h-screen bg-surface flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-40">
+      <header className="bg-card border-b border-border shrink-0 z-40 safe-area-top">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
           <div className="flex items-center gap-3">
             <Shield className="w-6 h-6 text-primary" />
@@ -552,7 +552,7 @@ const AdminPanel = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6">
+      <div className="flex-1 overflow-y-auto container mx-auto px-4 py-6 pb-24">
         {/* Tabs */}
         <div className="flex gap-1 bg-card border border-border rounded-xl p-1 mb-6 overflow-x-auto">
           {tabs.map(({ key, icon: Icon, label }) => (

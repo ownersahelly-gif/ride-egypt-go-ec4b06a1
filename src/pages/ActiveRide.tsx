@@ -613,7 +613,7 @@ const ActiveRide = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="h-screen flex items-center justify-center overflow-hidden">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -635,8 +635,8 @@ const ActiveRide = () => {
   const canAdvance = allPickupsHandledAtStop && allDropoffsHandledAtStop;
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
-      <header className="bg-card border-b border-border sticky top-0 z-40">
+    <div className="h-screen bg-surface flex flex-col overflow-hidden">
+      <header className="bg-card border-b border-border shrink-0 z-40 safe-area-top">
         <div className="container mx-auto flex items-center h-14 px-4 gap-3">
           <Link to="/driver-dashboard">
             <Button variant="ghost" size="icon"><Back className="w-5 h-5" /></Button>

@@ -182,9 +182,9 @@ const Carpool = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-background pb-20" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="h-screen bg-background flex flex-col overflow-hidden" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <div className="bg-primary text-primary-foreground px-4 pt-12 pb-6">
+      <div className="bg-primary text-primary-foreground px-4 pt-12 pb-6 shrink-0 safe-area-top">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-bold font-heading">
             {lang === 'ar' ? 'مشاركة الرحلات' : 'Carpooling'}
@@ -223,7 +223,7 @@ const Carpool = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-border bg-card">
+      <div className="flex border-b border-border bg-card shrink-0">
         {(['browse', 'my-rides', 'my-routes'] as const).map(t => (
           <button
             key={t}
@@ -242,7 +242,7 @@ const Carpool = () => {
         ))}
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
         {tab === 'browse' && (
           <>
             {/* Search From / To */}

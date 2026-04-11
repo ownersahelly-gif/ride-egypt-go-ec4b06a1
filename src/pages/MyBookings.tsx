@@ -176,15 +176,15 @@ const MyBookings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-surface">
-      <header className="bg-card border-b border-border sticky top-0 z-40">
+    <div className="h-screen bg-surface flex flex-col overflow-hidden">
+      <header className="bg-card border-b border-border shrink-0 z-40 safe-area-top">
         <div className="container mx-auto flex items-center h-16 px-4 gap-4">
           <Link to="/dashboard"><Button variant="ghost" size="icon"><Back className="w-5 h-5" /></Button></Link>
           <h1 className="text-lg font-bold text-foreground">{t('dashboard.myBookings')}</h1>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
+      <main className="flex-1 overflow-y-auto container mx-auto px-4 py-8 max-w-2xl pb-24">
         {loading ? (
           <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
         ) : bookings.length === 0 ? (
@@ -376,7 +376,7 @@ const MyBookings = () => {
           onRated={() => setRatedBookingIds(prev => new Set([...prev, ratingBooking.id]))}
         />
       )}
-      <div className="h-20" />
+      
       <BottomNav />
     </div>
   );

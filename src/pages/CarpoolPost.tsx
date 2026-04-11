@@ -97,13 +97,13 @@ const CarpoolPost = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <div className="bg-primary text-primary-foreground px-4 pt-12 pb-6">
+    <div className="h-screen bg-background flex flex-col overflow-hidden" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <div className="bg-primary text-primary-foreground px-4 pt-12 pb-6 shrink-0 safe-area-top">
         <button onClick={() => navigate('/carpool')} className="mb-3"><Back className="w-6 h-6" /></button>
         <h1 className="text-xl font-bold">{lang === 'ar' ? 'أضف رحلة جديدة' : 'Post a Ride'}</h1>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
         {/* Route */}
         <Card>
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><MapPin className="w-4 h-4" />{lang === 'ar' ? 'المسار' : 'Route'}</CardTitle></CardHeader>
