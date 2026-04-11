@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import MapView from '@/components/MapView';
+import MapPinPicker from '@/components/MapPinPicker';
 import PlacesAutocomplete from '@/components/PlacesAutocomplete';
 import BottomNav from '@/components/BottomNav';
 import { useBookingNotifications } from '@/hooks/useBookingNotifications';
@@ -378,24 +379,9 @@ const Dashboard = () => {
     }
   }, [selectedRide, routeDirections, lang, toast]);
 
-  const handleMapClick = useCallback((lat: number, lng: number) => {
-    if (step !== 'details') return;
-    const target = (pickupMode === 'nearby' && mapClickTarget === 'pickup') ? 'pickup'
-      : (dropoffMode === 'nearby' && mapClickTarget === 'dropoff') ? 'dropoff'
-      : (pickupMode === 'nearby') ? 'pickup'
-      : (dropoffMode === 'nearby') ? 'dropoff'
-      : null;
-    if (!target) return;
-    if (typeof google !== 'undefined') {
-      const geocoder = new google.maps.Geocoder();
-      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-        const name = status === 'OK' && results?.[0] ? results[0].formatted_address : `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-        validateCustomPoint({ lat, lng, name }, target);
-      });
-    } else {
-      validateCustomPoint({ lat, lng, name: `${lat.toFixed(4)}, ${lng.toFixed(4)}` }, target);
-    }
-  }, [step, pickupMode, dropoffMode, mapClickTarget, validateCustomPoint]);
+  const handleMapPinConfirm = useCallback((target: 'pickup' | 'dropoff', point: { lat: number; lng: number; name: string }) => {
+    validateCustomPoint(point, target);
+  }, [validateCustomPoint]);
 
   const isPickupValid = pickupMode === 'start' ? true : (!!customPickup && pickupResult?.ok === true);
   const isDropoffValid = dropoffMode === 'end' ? true : (!!customDropoff && dropoffResult?.ok === true);
@@ -803,40 +789,44 @@ const Dashboard = () => {
 
       {/* Map section - fills remaining space above card */}
       <div className="flex-1 min-h-0 relative">
-        <MapView
-          className="h-full w-full rounded-none"
-          markers={mapMarkers}
-          origin={step === 'details' && selectedRide?.routes ? { lat: selectedRide.routes.origin_lat, lng: selectedRide.routes.origin_lng } : (pickup && dropoff ? pickup : undefined)}
-          destination={step === 'details' && selectedRide?.routes ? { lat: selectedRide.routes.destination_lat, lng: selectedRide.routes.destination_lng } : (pickup && dropoff ? dropoff : undefined)}
-          showDirections={step === 'details' ? !!selectedRide?.routes : (!!pickup && !!dropoff)}
-          center={
-            step === 'details' && selectedRide?.routes && mapClickTarget === 'dropoff' && dropoffMode === 'nearby'
-              ? { lat: selectedRide.routes.destination_lat, lng: selectedRide.routes.destination_lng }
-              : step === 'details' && selectedRide?.routes && mapClickTarget === 'pickup' && pickupMode === 'nearby'
-              ? { lat: selectedRide.routes.origin_lat, lng: selectedRide.routes.origin_lng }
-              : undefined
-          }
-          zoom={step === 'details' && isNearbyMode ? 14 : 12}
-          showUserLocation
-          onMapClick={step === 'details' && isNearbyMode ? handleMapClick : undefined}
-          connectionLine={
-            nearestRoutePoint && (customPickup || customDropoff)
-              ? {
-                  from: (customPickup && pickupMode === 'nearby' ? customPickup : customDropoff) || { lat: 0, lng: 0 },
-                  to: nearestRoutePoint,
-                  color: (pickupResult?.ok === false || dropoffResult?.ok === false) ? '#EF4444' : '#22C55E',
-                }
-              : null
-          }
-        />
-        {/* Tap-on-map hint when nearby mode is active */}
-        {step === 'details' && isNearbyMode && (
-          <div className="absolute top-3 inset-x-0 flex justify-center z-10 pointer-events-none">
-            <div className="bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg text-xs font-medium flex items-center gap-2 animate-pulse">
-              <Navigation className="w-3.5 h-3.5" />
-              {lang === 'ar' ? 'اضغط على الخريطة لاختيار الموقع' : 'Tap on the map to pick a location'}
-            </div>
-          </div>
+        {step === 'details' && isNearbyMode ? (
+          <MapPinPicker
+            className="h-full w-full"
+            activePin={mapClickTarget === 'pickup' && pickupMode === 'nearby' ? 'origin' : mapClickTarget === 'dropoff' && dropoffMode === 'nearby' ? 'destination' : null}
+            origin={step === 'details' && selectedRide?.routes ? { lat: customPickup?.lat ?? selectedRide.routes.origin_lat, lng: customPickup?.lng ?? selectedRide.routes.origin_lng, name: customPickup?.name ?? (lang === 'ar' ? selectedRide.routes.origin_name_ar : selectedRide.routes.origin_name_en) } : undefined}
+            destination={step === 'details' && selectedRide?.routes ? { lat: customDropoff?.lat ?? selectedRide.routes.destination_lat, lng: customDropoff?.lng ?? selectedRide.routes.destination_lng, name: customDropoff?.name ?? (lang === 'ar' ? selectedRide.routes.destination_name_ar : selectedRide.routes.destination_name_en) } : undefined}
+            onConfirm={(pinType, loc) => handleMapPinConfirm(pinType === 'origin' ? 'pickup' : 'dropoff', loc)}
+            onCancel={() => {
+              if (mapClickTarget === 'pickup') setPickupMode('start');
+              else setDropoffMode('end');
+            }}
+          />
+        ) : (
+          <MapView
+            className="h-full w-full rounded-none"
+            markers={mapMarkers}
+            origin={step === 'details' && selectedRide?.routes ? { lat: selectedRide.routes.origin_lat, lng: selectedRide.routes.origin_lng } : (pickup && dropoff ? pickup : undefined)}
+            destination={step === 'details' && selectedRide?.routes ? { lat: selectedRide.routes.destination_lat, lng: selectedRide.routes.destination_lng } : (pickup && dropoff ? dropoff : undefined)}
+            showDirections={step === 'details' ? !!selectedRide?.routes : (!!pickup && !!dropoff)}
+            center={
+              step === 'details' && selectedRide?.routes && mapClickTarget === 'dropoff' && dropoffMode === 'nearby'
+                ? { lat: selectedRide.routes.destination_lat, lng: selectedRide.routes.destination_lng }
+                : step === 'details' && selectedRide?.routes && mapClickTarget === 'pickup' && pickupMode === 'nearby'
+                ? { lat: selectedRide.routes.origin_lat, lng: selectedRide.routes.origin_lng }
+                : undefined
+            }
+            zoom={12}
+            showUserLocation
+            connectionLine={
+              nearestRoutePoint && (customPickup || customDropoff)
+                ? {
+                    from: (customPickup && pickupMode === 'nearby' ? customPickup : customDropoff) || { lat: 0, lng: 0 },
+                    to: nearestRoutePoint,
+                    color: (pickupResult?.ok === false || dropoffResult?.ok === false) ? '#EF4444' : '#22C55E',
+                  }
+                : null
+            }
+          />
         )}
       </div>
 

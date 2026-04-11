@@ -49,10 +49,6 @@ const MapPinPicker = ({ activePin, origin, destination, onConfirm, onCancel, cla
       setDirections(null);
       return;
     }
-    if (activePin) {
-      setDirections(null);
-      return;
-    }
     const ds = new google.maps.DirectionsService();
     ds.route({
       origin: { lat: origin.lat, lng: origin.lng },
@@ -61,7 +57,7 @@ const MapPinPicker = ({ activePin, origin, destination, onConfirm, onCancel, cla
     }, (result, status) => {
       if (status === 'OK' && result) setDirections(result);
     });
-  }, [isLoaded, origin?.lat, origin?.lng, destination?.lat, destination?.lng, activePin]);
+  }, [isLoaded, origin?.lat, origin?.lng, destination?.lat, destination?.lng]);
 
   const getInitialCenter = () => {
     if (activePin === 'origin' && origin?.lat) return { lat: origin.lat, lng: origin.lng };
@@ -123,7 +119,7 @@ const MapPinPicker = ({ activePin, origin, destination, onConfirm, onCancel, cla
   }
 
   return (
-    <div className={`relative overflow-hidden rounded-xl ${className}`}>
+    <div className={`relative h-full w-full overflow-hidden ${className}`}>
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={getInitialCenter()}

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import MapView from '@/components/MapView';
+import MapPinPicker from '@/components/MapPinPicker';
 import PlacesAutocomplete from '@/components/PlacesAutocomplete';
 import {
   MapPin, Clock, Users, ArrowRight, Search, ChevronLeft, ChevronRight,
@@ -300,25 +301,9 @@ const BookRide = () => {
     setValidating(false);
   }, [selectedRide, routeDirections, lang, toast]);
 
-  const handleMapClick = useCallback((lat: number, lng: number) => {
-    if (step !== 'details') return;
-    const target = (pickupMode === 'nearby' && mapClickTarget === 'pickup') ? 'pickup'
-      : (dropoffMode === 'nearby' && mapClickTarget === 'dropoff') ? 'dropoff'
-      : (pickupMode === 'nearby') ? 'pickup'
-      : (dropoffMode === 'nearby') ? 'dropoff'
-      : null;
-    if (!target) return;
-
-    if (typeof google !== 'undefined') {
-      const geocoder = new google.maps.Geocoder();
-      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-        const name = status === 'OK' && results?.[0] ? results[0].formatted_address : `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-        validateCustomPoint({ lat, lng, name }, target);
-      });
-    } else {
-      validateCustomPoint({ lat, lng, name: `${lat.toFixed(4)}, ${lng.toFixed(4)}` }, target);
-    }
-  }, [step, pickupMode, dropoffMode, mapClickTarget, validateCustomPoint]);
+  const handleMapPinConfirm = useCallback((target: 'pickup' | 'dropoff', point: { lat: number; lng: number; name: string }) => {
+    validateCustomPoint(point, target);
+  }, [validateCustomPoint]);
 
   // --- Validity ---
   const isPickupValid = pickupMode === 'start' ? true : (!!customPickup && pickupResult?.ok === true);
@@ -1016,23 +1001,31 @@ const BookRide = () => {
                 <span className="text-sm font-medium text-foreground">
                   {lang === 'ar' ? 'خريطة المسار' : 'Route Map'}
                 </span>
-                {isNearbyMode && (
-                  <span className="text-xs text-muted-foreground animate-pulse">
-                    {lang === 'ar' ? '👆 اضغط على الخريطة لتحديد الموقع' : '👆 Tap map to set location'}
-                  </span>
-                )}
               </div>
               <div className="h-[280px]">
-                <MapView
-                  className="h-full"
-                  markers={mapMarkers}
-                  origin={selectedRide.routes ? { lat: selectedRide.routes.origin_lat, lng: selectedRide.routes.origin_lng } : undefined}
-                  destination={selectedRide.routes ? { lat: selectedRide.routes.destination_lat, lng: selectedRide.routes.destination_lng } : undefined}
-                  showDirections={!!selectedRide.routes}
-                  zoom={12}
-                  showUserLocation={false}
-                  onMapClick={isNearbyMode ? handleMapClick : undefined}
-                />
+                {isNearbyMode ? (
+                  <MapPinPicker
+                    className="h-full"
+                    activePin={mapClickTarget === 'pickup' && pickupMode === 'nearby' ? 'origin' : mapClickTarget === 'dropoff' && dropoffMode === 'nearby' ? 'destination' : null}
+                    origin={selectedRide.routes ? { lat: (customPickup?.lat ?? selectedRide.routes.origin_lat), lng: (customPickup?.lng ?? selectedRide.routes.origin_lng), name: customPickup?.name ?? (lang === 'ar' ? selectedRide.routes.origin_name_ar : selectedRide.routes.origin_name_en) } : undefined}
+                    destination={selectedRide.routes ? { lat: (customDropoff?.lat ?? selectedRide.routes.destination_lat), lng: (customDropoff?.lng ?? selectedRide.routes.destination_lng), name: customDropoff?.name ?? (lang === 'ar' ? selectedRide.routes.destination_name_ar : selectedRide.routes.destination_name_en) } : undefined}
+                    onConfirm={(pinType, loc) => handleMapPinConfirm(pinType === 'origin' ? 'pickup' : 'dropoff', loc)}
+                    onCancel={() => {
+                      if (mapClickTarget === 'pickup') setPickupMode('start');
+                      else setDropoffMode('end');
+                    }}
+                  />
+                ) : (
+                  <MapView
+                    className="h-full"
+                    markers={mapMarkers}
+                    origin={selectedRide.routes ? { lat: selectedRide.routes.origin_lat, lng: selectedRide.routes.origin_lng } : undefined}
+                    destination={selectedRide.routes ? { lat: selectedRide.routes.destination_lat, lng: selectedRide.routes.destination_lng } : undefined}
+                    showDirections={!!selectedRide.routes}
+                    zoom={12}
+                    showUserLocation={false}
+                  />
+                )}
               </div>
             </div>
 
