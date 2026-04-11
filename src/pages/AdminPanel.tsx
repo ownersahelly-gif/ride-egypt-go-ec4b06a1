@@ -781,6 +781,12 @@ const AdminPanel = () => {
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground" disabled={idx === 0} onClick={() => moveStop(route.id, idx, 'up')}>
+                                <ChevronLeft className="w-3.5 h-3.5 rotate-90" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground" disabled={idx === (routeStopsMap[route.id] || []).length - 1} onClick={() => moveStop(route.id, idx, 'down')}>
+                                <ChevronLeft className="w-3.5 h-3.5 -rotate-90" />
+                              </Button>
                               <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-primary" onClick={() => startEditStop(stop)}>
                                 <Edit className="w-3.5 h-3.5" />
                               </Button>
