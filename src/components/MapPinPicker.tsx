@@ -158,13 +158,13 @@ const MapPinPicker = ({ activePin, origin, destination, onConfirm, onCancel, cla
       {/* Center pin overlay - always centered on screen */}
       {activePin && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 9999 }}>
-          <div className="flex flex-col items-center animate-bounce" style={{ marginTop: '-48px' }}>
-            <svg width="56" height="72" viewBox="0 0 32 42" style={{ filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))' }}>
+          <div className="flex flex-col items-center" style={{ marginTop: '-32px' }}>
+            <svg width="36" height="48" viewBox="0 0 32 42" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>
               <path d="M16 0C7.2 0 0 7.2 0 16c0 12 16 26 16 26s16-14 16-26C32 7.2 24.8 0 16 0z" fill={pinColor} stroke="white" strokeWidth="2.5"/>
               <circle cx="16" cy="16" r="7" fill="white" opacity="0.95"/>
             </svg>
           </div>
-          <div className="absolute w-3 h-3 rounded-full bg-black/40" style={{ top: '50%', marginTop: '2px' }} />
+          <div className="absolute w-2 h-2 rounded-full bg-black/30" style={{ top: '50%', marginTop: '2px' }} />
         </div>
       )}
 
