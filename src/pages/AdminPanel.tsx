@@ -736,19 +736,21 @@ const AdminPanel = () => {
                           onSelect={(place) => setStopForm(p => ({ ...p, lat: parseFloat(place.lat.toFixed(6)), lng: parseFloat(place.lng.toFixed(6)), name_en: p.name_en || place.name, name_ar: p.name_ar || place.name }))}
                           iconColor="text-primary"
                         />
-                        <MapView
-                          className="h-[200px] rounded-lg overflow-hidden"
-                          center={stopForm.lat !== 0 ? { lat: stopForm.lat, lng: stopForm.lng } : { lat: route.origin_lat, lng: route.origin_lng }}
-                          zoom={stopForm.lat !== 0 ? 16 : 12}
-                          markers={[
-                            { lat: route.origin_lat, lng: route.origin_lng, label: 'A', color: 'green' },
-                            { lat: route.destination_lat, lng: route.destination_lng, label: 'B', color: 'red' },
-                            ...(stopForm.lat ? [{ lat: stopForm.lat, lng: stopForm.lng, label: '📍', color: 'blue' as const }] : []),
-                            ...(routeStopsMap[route.id] || []).map((s: any, i: number) => ({ lat: s.lat, lng: s.lng, label: (i + 1).toString(), color: 'blue' as const })),
-                          ]}
-                          onMapClick={(lat, lng) => setStopForm(p => ({ ...p, lat: parseFloat(lat.toFixed(6)), lng: parseFloat(lng.toFixed(6)) }))}
-                          showUserLocation={false}
-                        />
+                        <div className="h-[200px] w-full overflow-hidden rounded-lg border border-border bg-muted">
+                          <MapView
+                            className="h-full w-full"
+                            center={stopForm.lat !== 0 ? { lat: stopForm.lat, lng: stopForm.lng } : { lat: route.origin_lat, lng: route.origin_lng }}
+                            zoom={stopForm.lat !== 0 ? 16 : 12}
+                            markers={[
+                              { lat: route.origin_lat, lng: route.origin_lng, label: 'A', color: 'green' },
+                              { lat: route.destination_lat, lng: route.destination_lng, label: 'B', color: 'red' },
+                              ...(stopForm.lat !== 0 ? [{ lat: stopForm.lat, lng: stopForm.lng, label: '📍', color: 'blue' as const }] : []),
+                              ...(routeStopsMap[route.id] || []).map((s: any, i: number) => ({ lat: s.lat, lng: s.lng, label: (i + 1).toString(), color: 'blue' as const })),
+                            ]}
+                            onMapClick={(lat, lng) => setStopForm(p => ({ ...p, lat: parseFloat(lat.toFixed(6)), lng: parseFloat(lng.toFixed(6)) }))}
+                            showUserLocation={false}
+                          />
+                        </div>
                         {stopForm.lat !== 0 && <p className="text-xs text-muted-foreground">{stopForm.lat.toFixed(4)}, {stopForm.lng.toFixed(4)}</p>}
                       </div>
                       <Button size="sm" onClick={() => addStop(route.id)} disabled={!stopForm.name_en || !stopForm.name_ar || stopForm.lat === 0 || addingStop}>
