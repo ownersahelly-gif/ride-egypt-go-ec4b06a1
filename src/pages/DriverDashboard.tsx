@@ -391,7 +391,7 @@ const DriverDashboard = () => {
     { key: 'trips', icon: Navigation, label: lang === 'ar' ? 'الرحلات' : 'Trips' },
   ];
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  if (loading) return <div className="h-screen flex items-center justify-center overflow-hidden"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   const todayBookings = bookings.filter(b => b.scheduled_date === new Date().toISOString().split('T')[0] && b.status !== 'cancelled');
   const completedBookings = bookings.filter(b => b.status === 'completed');
@@ -413,7 +413,7 @@ const DriverDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="h-screen bg-surface flex flex-col overflow-hidden">
       <header className="bg-card border-b border-border sticky top-0 z-40">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
           <Link to="/" className="text-2xl font-bold text-primary font-arabic">{lang === 'ar' ? 'مسار' : 'Massar'}</Link>

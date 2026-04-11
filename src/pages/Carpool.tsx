@@ -182,7 +182,7 @@ const Carpool = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-background pb-20" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="h-screen bg-background flex flex-col overflow-hidden" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       {/* Header */}
       <div className="bg-primary text-primary-foreground px-4 pt-12 pb-6">
         <div className="flex items-center justify-between mb-4">

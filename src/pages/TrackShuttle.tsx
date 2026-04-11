@@ -410,7 +410,7 @@ const TrackShuttle = () => {
     ? { lat: myPickupLat, lng: myPickupLng } : undefined;
   const trackWaypoints = stopsBeforeMe.map(s => ({ lat: s.lat, lng: s.lng }));
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="h-screen bg-surface flex flex-col overflow-hidden">
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-40">
         <div className="container mx-auto flex items-center h-14 px-4 gap-3">

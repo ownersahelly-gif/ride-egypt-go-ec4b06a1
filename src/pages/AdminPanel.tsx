@@ -483,7 +483,7 @@ const AdminPanel = () => {
   const waitlistBookings = bookings.filter(b => b.status === 'waitlist').sort((a, b) => (a.waitlist_position || 0) - (b.waitlist_position || 0));
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+    return <div className="h-screen flex items-center justify-center overflow-hidden"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
 
   if (!isAdmin) {
@@ -536,7 +536,7 @@ const AdminPanel = () => {
   };
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="h-screen bg-surface flex flex-col overflow-hidden">
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-40">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
