@@ -651,7 +651,7 @@ const Dashboard = () => {
 
   return (
     <div className="h-screen flex flex-col">
-      <header className="flex items-center justify-between px-4 py-2 bg-card border-b border-border shrink-0 z-10">
+      <header className="flex items-center justify-between px-4 py-2 bg-card border-b border-border shrink-0 z-10 safe-area-top">
         <div className="flex items-center gap-2">
           {step !== 'search' && (
             <Button variant="ghost" size="sm" className="rounded-full gap-1" onClick={() => {
