@@ -202,7 +202,6 @@ const RequestRoute = () => {
           </Button>
         </form>
       </main>
-      <div className="h-20" />
       <BottomNav />
     </div>
   );
