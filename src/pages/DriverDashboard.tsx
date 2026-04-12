@@ -1303,20 +1303,46 @@ const DriverDashboard = () => {
 
             {/* ==================== TRIPS TAB ==================== */}
             {tab === 'trips' && (() => {
-              // Filter out bookings whose route no longer exists or is inactive
+              // Build trip entries from both bookings AND scheduled ride instances (from driverSchedules)
               const validBookings = bookings.filter(b => b.routes != null);
-              const grouped: Record<string, any[]> = {};
+              const grouped: Record<string, { bookings: any[]; routeInfo: any; date: string; time: string }> = {};
+              
+              // Add bookings
               validBookings.forEach(b => {
                 const key = `${b.scheduled_date}__${b.route_id || 'no-route'}__${b.scheduled_time}`;
-                if (!grouped[key]) grouped[key] = [];
-                grouped[key].push(b);
+                if (!grouped[key]) grouped[key] = { bookings: [], routeInfo: b.routes, date: b.scheduled_date, time: b.scheduled_time };
+                grouped[key].bookings.push(b);
               });
+
+              // Add scheduled trips that have no bookings yet
+              const now = new Date();
+              const todayDow = now.getDay();
+              for (const s of driverSchedules) {
+                // Generate upcoming dates for this schedule
+                for (let w = 0; w < 4; w++) {
+                  for (let d = 0; d < 7; d++) {
+                    const date = new Date(now);
+                    date.setDate(now.getDate() + (w * 7) + d);
+                    if (date.getDay() === s.day_of_week) {
+                      const dateStr = date.toISOString().split('T')[0];
+                      if (s.departure_time) {
+                        const key = `${dateStr}__${s.route_id}__${s.departure_time}`;
+                        if (!grouped[key]) grouped[key] = { bookings: [], routeInfo: s.routes, date: dateStr, time: s.departure_time };
+                      }
+                      if (s.return_time) {
+                        const key = `${dateStr}__${s.route_id}__${s.return_time}`;
+                        if (!grouped[key]) grouped[key] = { bookings: [], routeInfo: s.routes, date: dateStr, time: s.return_time };
+                      }
+                    }
+                  }
+                }
+              }
+
               const sortedKeys = Object.keys(grouped).sort((a, b) => {
-                // Sort by date descending, then time descending (most recent first)
                 const [dateA, , timeA] = a.split('__');
                 const [dateB, , timeB] = b.split('__');
-                if (dateA !== dateB) return dateB.localeCompare(dateA);
-                return (timeB || '').localeCompare(timeA || '');
+                if (dateA !== dateB) return dateA.localeCompare(dateB);
+                return (timeA || '').localeCompare(timeB || '');
               });
 
               return (
