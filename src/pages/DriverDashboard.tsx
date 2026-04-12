@@ -67,6 +67,7 @@ const DriverDashboard = () => {
   const [quickAddTime, setQuickAddTime] = useState('12:00');
   const [quickAddDir, setQuickAddDir] = useState<'go' | 'return'>('go');
   const [savingQuickAdd, setSavingQuickAdd] = useState(false);
+  const [startingTrip, setStartingTrip] = useState(false);
 
   const { newBookingsCount, acknowledge: ackBookings } = useDriverBookingNotifications(shuttle?.id || null);
   
