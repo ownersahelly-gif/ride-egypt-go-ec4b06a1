@@ -69,11 +69,15 @@ const BookRide = () => {
   // Saved locations
   const [savedLocations, setSavedLocations] = useState<any[]>([]);
 
-  // Bundles
-  const [availableBundles, setAvailableBundles] = useState<any[]>([]);
+  // Package Templates (new system)
+  const [packageTemplates, setPackageTemplates] = useState<any[]>([]);
+  const [routeOverrides, setRouteOverrides] = useState<any[]>([]);
+  const [timeRules, setTimeRules] = useState<any[]>([]);
+  const [globalDefaultFactor, setGlobalDefaultFactor] = useState(1.0);
   const [activeBundlePurchase, setActiveBundlePurchase] = useState<any>(null);
   const [useBundle, setUseBundle] = useState(false);
   const [showBundleSection, setShowBundleSection] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState<any>(null);
 
   const getDateOptions = () => {
     const options: { label: string; date: string }[] = [];
@@ -195,13 +199,19 @@ const BookRide = () => {
     setRouteStops(stops || []);
 
     if (user && ride.route_id) {
-      const [{ data: savedLocs }, { data: bundles }, { data: purchases }] = await Promise.all([
+      const [{ data: savedLocs }, { data: pkgTemplates }, { data: rOverrides }, { data: tRules }, { data: gFactor }, { data: purchases }] = await Promise.all([
         supabase.from('saved_locations').select('*').eq('user_id', user.id).eq('route_id', ride.route_id).order('use_count', { ascending: false }).limit(5),
-        supabase.from('ride_bundles').select('*').eq('route_id', ride.route_id).eq('is_active', true),
+        supabase.from('package_templates').select('*').eq('is_active', true).order('sort_order'),
+        supabase.from('route_package_overrides').select('*').eq('route_id', ride.route_id),
+        supabase.from('time_based_pricing_rules').select('*').eq('is_active', true),
+        supabase.from('app_settings').select('value').eq('key', 'global_default_factor').single(),
         supabase.from('bundle_purchases').select('*').eq('user_id', user.id).eq('route_id', ride.route_id).eq('status', 'active').gt('rides_remaining', 0).gt('expires_at', new Date().toISOString()).limit(1),
       ]);
       setSavedLocations(savedLocs || []);
-      setAvailableBundles(bundles || []);
+      setPackageTemplates(pkgTemplates || []);
+      setRouteOverrides(rOverrides || []);
+      setTimeRules(tRules || []);
+      if (gFactor) setGlobalDefaultFactor(parseFloat(gFactor.value) || 1.0);
       setActiveBundlePurchase(purchases?.[0] || null);
     }
   };
@@ -456,9 +466,45 @@ const BookRide = () => {
     }
   };
 
-  // --- Buy Bundle ---
-  const handleBuyBundle = async (bundle: any) => {
-    if (!user || !paymentProof) {
+  // --- Factor priority calculation ---
+  const getAppliedFactor = (pkg: any): number => {
+    // 1. Route override (highest priority)
+    const routeOverride = routeOverrides.find(o => o.package_template_id === pkg.id);
+    if (routeOverride) return Number(routeOverride.factor_override);
+
+    // 2. Time-based rule
+    const now = new Date();
+    const currentDay = now.getDay();
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const matchingTimeRule = timeRules.find(tr => {
+      if (!tr.is_active) return false;
+      if (tr.route_id && tr.route_id !== selectedRide?.route_id) return false;
+      if (tr.day_of_week && tr.day_of_week.length > 0 && !tr.day_of_week.includes(currentDay)) return false;
+      if (tr.start_time && tr.end_time) {
+        const st = tr.start_time.slice(0, 5);
+        const et = tr.end_time.slice(0, 5);
+        if (currentTime < st || currentTime > et) return false;
+      }
+      return true;
+    });
+    if (matchingTimeRule) return Number(matchingTimeRule.factor);
+
+    // 3. Package factor
+    if (pkg.factor && Number(pkg.factor) !== 1) return Number(pkg.factor);
+
+    // 4. Global default
+    return globalDefaultFactor;
+  };
+
+  const getPackagePrice = (pkg: any, routePrice: number): number => {
+    const rides = pkg.ride_count || 30; // unlimited defaults to 30 for pricing display
+    const factor = getAppliedFactor(pkg);
+    return Math.round(routePrice * rides * factor);
+  };
+
+  // --- Buy Package ---
+  const handleBuyPackage = async (pkg: any) => {
+    if (!user || !paymentProof || !selectedRide?.route_id) {
       toast({ title: lang === 'ar' ? 'أرفق إثبات الدفع' : 'Attach payment proof', variant: 'destructive' });
       return;
     }
@@ -472,15 +518,15 @@ const BookRide = () => {
         proofUrl = await uploadToBunny(paymentProof, filePath);
       }
       const expiresAt = new Date();
-      if (bundle.bundle_type === 'weekly') expiresAt.setDate(expiresAt.getDate() + 7);
-      else expiresAt.setDate(expiresAt.getDate() + 30);
+      expiresAt.setDate(expiresAt.getDate() + pkg.validity_days);
 
+      const rideCount = pkg.ride_count || 9999; // unlimited
       const { error } = await supabase.from('bundle_purchases').insert({
         user_id: user.id,
-        bundle_id: bundle.id,
-        route_id: bundle.route_id,
-        rides_remaining: bundle.ride_count,
-        rides_total: bundle.ride_count,
+        bundle_id: pkg.id,
+        route_id: selectedRide.route_id,
+        rides_remaining: rideCount,
+        rides_total: rideCount,
         expires_at: expiresAt.toISOString(),
         status: 'active',
         payment_proof_url: proofUrl,
@@ -488,11 +534,13 @@ const BookRide = () => {
       if (error) throw error;
 
       toast({
-        title: lang === 'ar' ? 'تم شراء الباقة!' : 'Bundle purchased!',
-        description: lang === 'ar' ? `${bundle.ride_count} رحلة متاحة` : `${bundle.ride_count} rides available`,
+        title: lang === 'ar' ? 'تم شراء الباقة!' : 'Package purchased!',
+        description: pkg.ride_count
+          ? (lang === 'ar' ? `${pkg.ride_count} رحلة متاحة` : `${pkg.ride_count} rides available`)
+          : (lang === 'ar' ? 'رحلات غير محدودة!' : 'Unlimited rides!'),
       });
       const { data: purchases } = await supabase.from('bundle_purchases').select('*')
-        .eq('user_id', user.id).eq('route_id', bundle.route_id).eq('status', 'active')
+        .eq('user_id', user.id).eq('route_id', selectedRide.route_id).eq('status', 'active')
         .gt('rides_remaining', 0).gt('expires_at', new Date().toISOString()).limit(1);
       setActiveBundlePurchase(purchases?.[0] || null);
       setPaymentProof(null); setPaymentPreview(null); setShowBundleSection(false);
@@ -973,8 +1021,8 @@ const BookRide = () => {
               </div>
             )}
 
-            {/* Available Bundles */}
-            {availableBundles.length > 0 && !activeBundlePurchase && (
+            {/* Available Packages */}
+            {packageTemplates.length > 0 && !activeBundlePurchase && (
               <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
                 <button
                   onClick={() => setShowBundleSection(!showBundleSection)}
@@ -982,60 +1030,71 @@ const BookRide = () => {
                 >
                   <h3 className="font-semibold text-foreground flex items-center gap-2">
                     <Package className="w-4 h-4 text-secondary" />
-                    {lang === 'ar' ? 'باقات مخفضة' : 'Discounted Bundles'}
+                    {lang === 'ar' ? 'باقات مخفضة' : 'Discounted Packages'}
                   </h3>
                   <span className="text-xs text-secondary font-medium">
-                    {lang === 'ar' ? `وفّر حتى ${Math.max(...availableBundles.map((b: any) => b.discount_percentage))}%` : `Save up to ${Math.max(...availableBundles.map((b: any) => b.discount_percentage))}%`}
+                    {lang === 'ar' ? `وفّر حتى ${Math.round((1 - Math.min(...packageTemplates.map(p => Number(p.factor)))) * 100)}%` : `Save up to ${Math.round((1 - Math.min(...packageTemplates.map(p => Number(p.factor)))) * 100)}%`}
                   </span>
                 </button>
 
                 {showBundleSection && (
                   <div className="space-y-3 pt-2">
-                    {availableBundles.map((bundle: any) => {
-                      const singlePrice = selectedRide.routes?.price || 0;
-                      const bundlePricePerRide = bundle.price / bundle.ride_count;
-                      const savings = (singlePrice * bundle.ride_count) - bundle.price;
+                    {packageTemplates.map((pkg: any) => {
+                      const routePrice = selectedRide.routes?.price || 0;
+                      const factor = getAppliedFactor(pkg);
+                      const rides = pkg.ride_count || 30;
+                      const packageTotal = getPackagePrice(pkg, routePrice);
+                      const normalTotal = routePrice * rides;
+                      const savings = normalTotal - packageTotal;
+                      const pricePerRide = Math.round(packageTotal / rides);
+                      const discountPct = Math.round((1 - factor) * 100);
+
                       return (
-                        <div key={bundle.id} className="bg-surface rounded-xl p-4 border border-border space-y-3">
+                        <div key={pkg.id} className={`bg-surface rounded-xl p-4 border-2 transition-colors space-y-3 ${selectedPackage?.id === pkg.id ? 'border-secondary' : 'border-border'}`}>
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="font-bold text-foreground">
-                                {bundle.bundle_type === 'weekly'
-                                  ? (lang === 'ar' ? 'باقة أسبوعية' : 'Weekly Bundle')
-                                  : (lang === 'ar' ? 'باقة شهرية' : 'Monthly Bundle')}
-                              </p>
+                              <p className="font-bold text-foreground">{lang === 'ar' ? pkg.name_ar : pkg.name_en}</p>
                               <p className="text-sm text-muted-foreground">
-                                {bundle.ride_count} {lang === 'ar' ? 'رحلة' : 'rides'}
+                                {pkg.ride_count ? `${pkg.ride_count} ${lang === 'ar' ? 'رحلة' : 'rides'}` : (lang === 'ar' ? '∞ غير محدود' : '∞ Unlimited')}
+                                {' · '}{pkg.validity_days} {lang === 'ar' ? 'يوم' : 'days'}
                               </p>
                             </div>
                             <div className="text-end">
-                              <p className="text-xl font-bold text-primary">{bundle.price} EGP</p>
-                              <p className="text-xs text-muted-foreground line-through">{singlePrice * bundle.ride_count} EGP</p>
+                              <p className="text-xl font-bold text-primary">{packageTotal} EGP</p>
+                              {savings > 0 && <p className="text-xs text-muted-foreground line-through">{normalTotal} EGP</p>}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="bg-secondary/10 text-secondary font-medium px-2 py-1 rounded-full">
-                              {lang === 'ar' ? `وفّر ${savings} جنيه` : `Save ${savings} EGP`}
-                            </span>
+                          <div className="flex items-center gap-2 text-xs flex-wrap">
+                            {discountPct > 0 && (
+                              <span className="bg-secondary/10 text-secondary font-medium px-2 py-1 rounded-full">
+                                {lang === 'ar' ? `خصم ${discountPct}%` : `${discountPct}% off`}
+                              </span>
+                            )}
+                            {savings > 0 && (
+                              <span className="bg-secondary/10 text-secondary font-medium px-2 py-1 rounded-full">
+                                {lang === 'ar' ? `وفّر ${savings} جنيه` : `Save ${savings} EGP`}
+                              </span>
+                            )}
                             <span className="text-muted-foreground">
-                              {lang === 'ar' ? `${bundlePricePerRide.toFixed(0)} جنيه/رحلة` : `${bundlePricePerRide.toFixed(0)} EGP/ride`}
+                              {lang === 'ar' ? `${pricePerRide} جنيه/رحلة` : `${pricePerRide} EGP/ride`}
                             </span>
+                            <span className="text-muted-foreground font-mono">×{factor.toFixed(2)}</span>
                           </div>
                           <Button
                             className="w-full"
                             variant="secondary"
                             size="sm"
                             disabled={loading || !paymentProof}
-                            onClick={() => handleBuyBundle(bundle)}
+                            onClick={() => handleBuyPackage(pkg)}
                           >
                             <Package className="w-4 h-4 me-1" />
-                            {lang === 'ar' ? 'شراء الباقة' : 'Buy Bundle'}
+                            {lang === 'ar' ? 'شراء الباقة' : 'Buy Package'}
                           </Button>
                         </div>
                       );
                     })}
                     <p className="text-xs text-muted-foreground text-center">
-                      {lang === 'ar' ? 'ارفع إثبات الدفع أدناه ثم اضغط "شراء الباقة"' : 'Upload payment proof below then click "Buy Bundle"'}
+                      {lang === 'ar' ? 'ارفع إثبات الدفع أدناه ثم اضغط "شراء الباقة"' : 'Upload payment proof below then click "Buy Package"'}
                     </p>
                   </div>
                 )}

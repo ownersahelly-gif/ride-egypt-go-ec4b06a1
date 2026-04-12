@@ -15,8 +15,9 @@ import {
   CheckCircle2, XCircle, MapPin, Clock, Search, Globe, LogOut, Shield,
   Loader2, Eye, Database, Settings, Phone, Package, ListOrdered
 } from 'lucide-react';
+import PackagePricing from '@/components/admin/PackagePricing';
 
-type AdminTab = 'routes' | 'drivers' | 'shuttles' | 'bookings' | 'analytics' | 'approvals' | 'settings' | 'carpool' | 'users' | 'route_requests';
+type AdminTab = 'routes' | 'drivers' | 'shuttles' | 'bookings' | 'analytics' | 'approvals' | 'settings' | 'carpool' | 'users' | 'route_requests' | 'packages';
 
 const AdminPanel = () => {
   const { user, signOut } = useAuth();
@@ -531,6 +532,7 @@ const AdminPanel = () => {
     { key: 'approvals', icon: CheckCircle2, label: lang === 'ar' ? 'الموافقات' : 'Approvals' },
     { key: 'carpool', icon: Car, label: lang === 'ar' ? 'مشاركة الرحلات' : 'Carpool' },
     { key: 'routes', icon: Route, label: lang === 'ar' ? 'المسارات' : 'Routes' },
+    { key: 'packages', icon: Package, label: lang === 'ar' ? 'الباقات' : 'Packages' },
     { key: 'drivers', icon: Users, label: lang === 'ar' ? 'السائقين' : 'Drivers' },
     { key: 'shuttles', icon: Car, label: lang === 'ar' ? 'الشاتلات' : 'Shuttles' },
     { key: 'bookings', icon: Ticket, label: lang === 'ar' ? 'الحجوزات' : 'Bookings' },
@@ -1239,6 +1241,11 @@ const AdminPanel = () => {
           </div>
         )}
 
+        {/* Packages Tab */}
+        {tab === 'packages' && (
+          <PackagePricing lang={lang} routes={routes} />
+        )}
+
         {/* Settings Tab */}
         {tab === 'settings' && (
           <div className="space-y-6">
@@ -1304,90 +1311,6 @@ const AdminPanel = () => {
               </div>
             </div>
 
-            {/* Bundles Management */}
-            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-foreground flex items-center gap-2">
-                  <Package className="w-5 h-5 text-secondary" />
-                  {lang === 'ar' ? 'الباقات' : 'Ride Bundles'}
-                </h3>
-                <Button size="sm" onClick={() => setShowBundleForm(!showBundleForm)}>
-                  <Plus className="w-4 h-4 me-1" />{lang === 'ar' ? 'إضافة' : 'Add'}
-                </Button>
-              </div>
-
-              {showBundleForm && (
-                <div className="bg-surface rounded-xl p-4 space-y-3 border border-border">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label>{lang === 'ar' ? 'المسار' : 'Route'}</Label>
-                      <select className="w-full border border-border rounded-lg p-2 bg-card text-foreground text-sm"
-                        value={bundleForm.route_id} onChange={e => setBundleForm(p => ({ ...p, route_id: e.target.value }))}>
-                        <option value="">{lang === 'ar' ? 'اختر مسار' : 'Select route'}</option>
-                        {routes.filter(r => r.status === 'active').map(r => (
-                          <option key={r.id} value={r.id}>{lang === 'ar' ? r.name_ar : r.name_en}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <Label>{lang === 'ar' ? 'النوع' : 'Type'}</Label>
-                      <select className="w-full border border-border rounded-lg p-2 bg-card text-foreground text-sm"
-                        value={bundleForm.bundle_type} onChange={e => setBundleForm(p => ({ ...p, bundle_type: e.target.value }))}>
-                        <option value="weekly">{lang === 'ar' ? 'أسبوعي' : 'Weekly'}</option>
-                        <option value="monthly">{lang === 'ar' ? 'شهري' : 'Monthly'}</option>
-                      </select>
-                    </div>
-                    <div>
-                      <Label>{lang === 'ar' ? 'عدد الرحلات' : 'Ride Count'}</Label>
-                      <Input type="number" value={bundleForm.ride_count} onChange={e => setBundleForm(p => ({ ...p, ride_count: parseInt(e.target.value) || 0 }))} />
-                    </div>
-                    <div>
-                      <Label>{lang === 'ar' ? 'سعر الباقة (EGP)' : 'Bundle Price (EGP)'}</Label>
-                      <Input type="number" value={bundleForm.price} onChange={e => setBundleForm(p => ({ ...p, price: parseInt(e.target.value) || 0 }))} />
-                    </div>
-                    <div>
-                      <Label>{lang === 'ar' ? 'نسبة الخصم %' : 'Discount %'}</Label>
-                      <Input type="number" value={bundleForm.discount_percentage} onChange={e => setBundleForm(p => ({ ...p, discount_percentage: parseInt(e.target.value) || 0 }))} />
-                    </div>
-                  </div>
-                  <Button disabled={savingBundle || !bundleForm.route_id} onClick={async () => {
-                    setSavingBundle(true);
-                    const { error } = await supabase.from('ride_bundles').insert({ ...bundleForm, is_active: true });
-                    if (error) toast.error(error.message);
-                    else { toast.success(lang === 'ar' ? 'تم إنشاء الباقة' : 'Bundle created'); setShowBundleForm(false); fetchAllData(); }
-                    setSavingBundle(false);
-                  }}>
-                    {savingBundle ? <Loader2 className="w-4 h-4 animate-spin" /> : (lang === 'ar' ? 'إنشاء الباقة' : 'Create Bundle')}
-                  </Button>
-                </div>
-              )}
-
-              {bundles.length > 0 ? (
-                <div className="space-y-2">
-                  {bundles.map((b: any) => (
-                    <div key={b.id} className="flex items-center justify-between bg-surface rounded-lg p-3 border border-border">
-                      <div>
-                        <p className="font-medium text-foreground text-sm">
-                          {b.bundle_type === 'weekly' ? (lang === 'ar' ? 'أسبوعي' : 'Weekly') : (lang === 'ar' ? 'شهري' : 'Monthly')}
-                          {' — '}{lang === 'ar' ? b.routes?.name_ar : b.routes?.name_en}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {b.ride_count} {lang === 'ar' ? 'رحلة' : 'rides'} · {b.price} EGP · {b.discount_percentage}% {lang === 'ar' ? 'خصم' : 'off'}
-                        </p>
-                      </div>
-                      <Button variant="ghost" size="icon" onClick={async () => {
-                        await supabase.from('ride_bundles').delete().eq('id', b.id);
-                        fetchAllData();
-                      }}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">{lang === 'ar' ? 'لا توجد باقات بعد' : 'No bundles yet'}</p>
-              )}
-            </div>
 
             {/* Test Trip Launcher */}
             <div className="bg-card border border-border rounded-xl p-6 space-y-4">
