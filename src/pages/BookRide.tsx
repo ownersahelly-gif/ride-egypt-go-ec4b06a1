@@ -368,7 +368,11 @@ const BookRide = () => {
       const singlePrice = usingBundle ? 0 : basePrice;
       const bookingStatus = asWaitlist ? 'waitlist' : (usingBundle ? 'confirmed' : 'pending');
 
-      const directions: ('go' | 'return')[] = tripDirection === 'both' ? ['go', 'return'] : [tripDirection as 'go' | 'return'];
+      // Force direction to match the ride instance when it's a single-direction ride
+      const effectiveDirection = selectedRide.direction === 'go' ? 'go'
+        : selectedRide.direction === 'return' ? 'return'
+        : tripDirection;
+      const directions: ('go' | 'return')[] = effectiveDirection === 'both' ? ['go', 'return'] : [effectiveDirection as 'go' | 'return'];
 
       let returnRideInstance: any = null;
       if (tripDirection === 'both') {
