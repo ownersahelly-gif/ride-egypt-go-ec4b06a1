@@ -69,11 +69,15 @@ const BookRide = () => {
   // Saved locations
   const [savedLocations, setSavedLocations] = useState<any[]>([]);
 
-  // Bundles
-  const [availableBundles, setAvailableBundles] = useState<any[]>([]);
+  // Package Templates (new system)
+  const [packageTemplates, setPackageTemplates] = useState<any[]>([]);
+  const [routeOverrides, setRouteOverrides] = useState<any[]>([]);
+  const [timeRules, setTimeRules] = useState<any[]>([]);
+  const [globalDefaultFactor, setGlobalDefaultFactor] = useState(1.0);
   const [activeBundlePurchase, setActiveBundlePurchase] = useState<any>(null);
   const [useBundle, setUseBundle] = useState(false);
   const [showBundleSection, setShowBundleSection] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState<any>(null);
 
   const getDateOptions = () => {
     const options: { label: string; date: string }[] = [];
