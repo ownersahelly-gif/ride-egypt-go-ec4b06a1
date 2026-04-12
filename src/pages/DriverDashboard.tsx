@@ -459,7 +459,7 @@ const DriverDashboard = () => {
   };
 
   return (
-    <div className="h-screen bg-surface flex flex-col overflow-hidden">
+    <div className="h-screen bg-surface flex flex-col overflow-hidden max-w-full">
       <header className="bg-card border-b border-border shrink-0 z-40 safe-area-top">
         <div className="container mx-auto flex items-center justify-between h-16 px-4">
           <Link to="/" className="text-2xl font-bold text-primary font-arabic">{appName}</Link>
@@ -471,7 +471,7 @@ const DriverDashboard = () => {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto container mx-auto px-4 py-6 max-w-2xl pb-24">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden container mx-auto px-4 py-6 max-w-2xl pb-24">
         {!shuttle && (
           <div className="bg-card rounded-2xl border border-border p-12 text-center">
             <Clock className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
@@ -483,13 +483,13 @@ const DriverDashboard = () => {
         {shuttle && (
           <>
             {/* Tab bar */}
-            <div className="flex gap-1 bg-card border border-border rounded-xl p-1 mb-6">
+            <div className="flex gap-1 bg-card border border-border rounded-xl p-1 mb-6 overflow-x-auto no-scrollbar">
               {tabs.map(({ key, icon: Icon, label }) => (
                 <button key={key} onClick={() => { setTab(key); if (key === 'home') ackBookings(); }}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors relative ${
+                  className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 px-3 py-3 rounded-lg text-xs sm:text-sm font-medium transition-colors relative whitespace-nowrap ${
                     tab === key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                   }`}>
-                  <Icon className="w-4 h-4" />{label}
+                  <Icon className="w-4 h-4 shrink-0" /><span className="truncate">{label}</span>
                   {key === 'home' && newBookingsCount > 0 && tab !== 'home' && (
                     <span className="absolute -top-1 -end-1 w-5 h-5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">{newBookingsCount}</span>
                   )}
