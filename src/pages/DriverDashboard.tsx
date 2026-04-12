@@ -1187,16 +1187,31 @@ const DriverDashboard = () => {
                             />
                           );
                         })()}
+                        {/* Show existing schedule info if already scheduled */}
+                        {isScheduled && (() => {
+                          const existingSchedules = driverSchedules.filter(s => s.route_id === r.id);
+                          return (
+                            <div className="bg-primary/5 border border-primary/10 rounded-xl p-3 mb-2 space-y-1">
+                              <p className="text-xs font-medium text-primary">{lang === 'ar' ? 'مُجدول بالفعل:' : 'Already scheduled:'}</p>
+                              {existingSchedules.map(s => (
+                                <p key={s.id} className="text-xs text-muted-foreground">
+                                  {dayNames[s.day_of_week]} — {formatTime12h(s.departure_time, lang)}
+                                  {s.return_time ? ` + ${formatTime12h(s.return_time, lang)}` : ''}
+                                </p>
+                              ))}
+                              <p className="text-[10px] text-muted-foreground mt-1">{lang === 'ar' ? 'يمكنك إضافة أيام أو أوقات أخرى' : 'You can add more days or times'}</p>
+                            </div>
+                          );
+                        })()}
                         <div className="flex items-center justify-between">
                           <p className="text-xs text-green-600">
                             <TrendingUp className="w-3 h-3 inline me-1" />
                             ~{earnings.perTrip.toFixed(0)} EGP/{lang === 'ar' ? 'رحلة' : 'trip'}
                           </p>
-                          {!isScheduled && (
-                            <Button size="sm" onClick={() => openScheduleForRoute(r)}>
-                              <Calendar className="w-3.5 h-3.5 me-1" />{lang === 'ar' ? 'اختيار' : 'Choose'}
-                            </Button>
-                          )}
+                          <Button size="sm" onClick={() => openScheduleForRoute(r)}>
+                            <Calendar className="w-3.5 h-3.5 me-1" />
+                            {isScheduled ? (lang === 'ar' ? 'إضافة مواعيد' : 'Add Times') : (lang === 'ar' ? 'اختيار' : 'Choose')}
+                          </Button>
                         </div>
                       </div>
                     );
