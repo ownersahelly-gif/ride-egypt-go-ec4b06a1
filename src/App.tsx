@@ -26,6 +26,7 @@ import CarpoolPost from "./pages/CarpoolPost.tsx";
 import CarpoolRoute from "./pages/CarpoolRoute.tsx";
 import CarpoolManage from "./pages/CarpoolManage.tsx";
 import Wallet from "./pages/Wallet.tsx";
+import DriverTestView from "./pages/DriverTestView.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import GlobalNotifications from "./components/GlobalNotifications";
 
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="/track" element={<ProtectedRoute><TrackShuttle /></ProtectedRoute>} />
               <Route path="/active-ride" element={<ProtectedRoute><ActiveRide /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
+              <Route path="/driver-test" element={<ProtectedRoute><DriverTestView /></ProtectedRoute>} />
               <Route path="/driver/:id" element={<DriverProfile />} />
               <Route path="/carpool" element={<ProtectedRoute><Carpool /></ProtectedRoute>} />
               <Route path="/carpool/verify" element={<ProtectedRoute><CarpoolVerify /></ProtectedRoute>} />

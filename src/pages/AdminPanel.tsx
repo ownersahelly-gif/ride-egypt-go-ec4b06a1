@@ -605,6 +605,12 @@ const AdminPanel = () => {
             <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Admin</span>
           </div>
           <div className="flex items-center gap-2">
+            <Link to="/driver-test">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                <Eye className="w-3.5 h-3.5" />
+                {lang === 'ar' ? 'اختبار السائق' : 'Test Driver'}
+              </Button>
+            </Link>
             <button onClick={() => setLang(lang === 'en' ? 'ar' : 'en')} className="p-2 text-muted-foreground hover:text-foreground"><Globe className="w-5 h-5" /></button>
             <Button variant="ghost" size="icon" onClick={() => signOut()}><LogOut className="w-5 h-5" /></Button>
           </div>
