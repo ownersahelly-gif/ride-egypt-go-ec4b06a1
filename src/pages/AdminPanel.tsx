@@ -109,6 +109,14 @@ const AdminPanel = () => {
     }
 
     if (settingsRes.data) setInstapayPhone(settingsRes.data.value);
+    // Fetch app name settings
+    const { data: appNameData } = await supabase.from('app_settings').select('key, value').in('key', ['app_name_en', 'app_name_ar']);
+    if (appNameData) {
+      appNameData.forEach((row: any) => {
+        if (row.key === 'app_name_en') setAppNameEnSetting(row.value);
+        if (row.key === 'app_name_ar') setAppNameArSetting(row.value);
+      });
+    }
     // Fetch global waiting time
     const { data: waitData } = await supabase.from('app_settings').select('value').eq('key', 'stop_waiting_time_minutes').single();
     if (waitData) setGlobalWaitingTime(waitData.value);
