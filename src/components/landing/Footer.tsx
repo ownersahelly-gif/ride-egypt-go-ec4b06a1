@@ -1,7 +1,7 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const Footer = () => {
-  const { t, lang } = useLanguage();
+  const { t, lang, appName } = useLanguage();
 
   return (
     <footer className="border-t border-border py-12">
@@ -9,7 +9,7 @@ const Footer = () => {
         <div className="grid sm:grid-cols-3 gap-8 mb-8">
           <div>
             <h3 className="text-xl font-bold text-primary font-arabic mb-2">
-              {lang === 'ar' ? 'مسار' : 'Massar'}
+              {appName}
             </h3>
             <p className="text-muted-foreground text-sm">{t('footer.tagline')}</p>
           </div>

@@ -10,7 +10,7 @@ import { Mail, Lock, ArrowRight, ArrowLeft, Eye, EyeOff, Phone } from 'lucide-re
 
 const Login = () => {
   const { signIn } = useAuth();
-  const { t, lang } = useLanguage();
+  const { t, lang, appName } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
@@ -42,7 +42,7 @@ const Login = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/" className="text-3xl font-bold text-primary font-arabic">
-            {lang === 'ar' ? 'مسار' : 'Massar'}
+            {appName}
           </Link>
           <h1 className="text-2xl font-bold text-foreground mt-6">{t('auth.loginTitle')}</h1>
           <p className="text-muted-foreground mt-2">{t('auth.loginSubtitle')}</p>

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Menu, X, Globe } from 'lucide-react';
 
 const Navbar = () => {
-  const { t, lang, setLang } = useLanguage();
+  const { t, lang, setLang, appName } = useLanguage();
   const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -21,7 +21,7 @@ const Navbar = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
       <div className="container mx-auto flex items-center justify-between h-16 px-4">
         <a href="#" className="text-2xl font-bold text-primary font-arabic">
-          {lang === 'ar' ? 'مسار' : 'Massar'}
+          {appName}
         </a>
 
         <div className="hidden md:flex items-center gap-6">
