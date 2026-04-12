@@ -17,25 +17,33 @@ export const usePushNotifications = () => {
     const setup = async () => {
       try {
         const { Capacitor } = await import('@capacitor/core');
-        if (!Capacitor.isNativePlatform()) return;
+        const platform = Capacitor.getPlatform();
+        console.log('[Push] Platform:', platform, 'isNative:', Capacitor.isNativePlatform());
+
+        if (!Capacitor.isNativePlatform()) {
+          console.log('[Push] Not native platform, skipping push registration');
+          return;
+        }
 
         const { PushNotifications } = await import('@capacitor/push-notifications');
         const { supabase } = await import('@/integrations/supabase/client');
 
         let permStatus = await PushNotifications.checkPermissions();
+        console.log('[Push] Current permission status:', permStatus.receive);
+
         if (permStatus.receive === 'prompt') {
           permStatus = await PushNotifications.requestPermissions();
+          console.log('[Push] Permission after request:', permStatus.receive);
         }
         if (permStatus.receive !== 'granted') {
-          console.log('Push notification permission not granted');
+          console.log('[Push] Permission not granted:', permStatus.receive);
           return;
         }
 
         if (cancelled) return;
 
-        const platform = Capacitor.getPlatform();
-
         await PushNotifications.addListener('registration', async (token) => {
+          console.log('[Push] Got token:', token.value?.substring(0, 20) + '...');
           try {
             const { data: existing } = await supabase
               .from('device_tokens')
@@ -45,32 +53,39 @@ export const usePushNotifications = () => {
               .maybeSingle();
 
             if (existing) {
-              await supabase
+              const { error } = await supabase
                 .from('device_tokens')
                 .update({ token: token.value, updated_at: new Date().toISOString() })
                 .eq('id', existing.id);
+              console.log('[Push] Token updated:', error ? error.message : 'success');
             } else {
-              await supabase
+              const { error } = await supabase
                 .from('device_tokens')
                 .insert({ user_id: user.id, token: token.value, platform });
+              console.log('[Push] Token inserted:', error ? error.message : 'success');
             }
-            console.log('Push token registered:', platform);
           } catch (e) {
-            console.error('Failed to save push token:', e);
+            console.error('[Push] Failed to save push token:', e);
           }
         });
 
         await PushNotifications.addListener('registrationError', (error) => {
-          console.error('Push registration error:', error);
+          console.error('[Push] Registration error:', JSON.stringify(error));
         });
 
         await PushNotifications.addListener('pushNotificationReceived', (notification) => {
-          console.log('Push notification received:', notification);
+          console.log('[Push] Notification received in foreground:', notification);
         });
 
+        await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+          console.log('[Push] Notification action:', action);
+        });
+
+        console.log('[Push] Calling register()...');
         await PushNotifications.register();
+        console.log('[Push] register() called successfully');
       } catch (err) {
-        console.warn('Push notifications unavailable:', err);
+        console.error('[Push] Setup error:', err);
       }
     };
 
