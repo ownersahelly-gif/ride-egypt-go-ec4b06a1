@@ -9,8 +9,6 @@ import { useToast } from '@/hooks/use-toast';
 import MapView from '@/components/MapView';
 import PlacesAutocomplete from '@/components/PlacesAutocomplete';
 import BottomNav from '@/components/BottomNav';
-import { useBookingNotifications } from '@/hooks/useBookingNotifications';
-import { useRideMessageNotifications } from '@/hooks/useRideMessageNotifications';
 import {
   MapPin, Clock, Users, ArrowRight, Calendar, AlertCircle, Car,
   User as UserIcon, Loader2, CheckCircle2,
@@ -35,8 +33,6 @@ const haversineDistanceKm = (a: { lat: number; lng: number }, b: { lat: number; 
 type PointSelection = { lat: number; lng: number; name: string } | null;
 
 const Dashboard = () => {
-  useBookingNotifications();
-  useRideMessageNotifications();
   const { user, signOut } = useAuth();
   const { t, lang, setLang, appName } = useLanguage();
   const { settings } = useAppSettings();
