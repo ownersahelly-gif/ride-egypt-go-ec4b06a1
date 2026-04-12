@@ -375,7 +375,7 @@ const BookRide = () => {
       const directions: ('go' | 'return')[] = effectiveDirection === 'both' ? ['go', 'return'] : [effectiveDirection as 'go' | 'return'];
 
       let returnRideInstance: any = null;
-      if (tripDirection === 'both') {
+      if (effectiveDirection === 'both') {
         const { data: returnRides } = await supabase
           .from('ride_instances').select('*')
           .eq('route_id', selectedRide.route_id).eq('ride_date', selectedRide.ride_date)
