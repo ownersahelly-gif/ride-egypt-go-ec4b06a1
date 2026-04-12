@@ -86,6 +86,7 @@ const Signup = () => {
   const { t, lang, appName } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [role, setRole] = useState<UserRole | null>(null);
   const [driverStep, setDriverStep] = useState(1);
   const [fullName, setFullName] = useState('');
@@ -94,6 +95,8 @@ const Signup = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const referralCode = searchParams.get('ref') || '';
 
   // Driver photos
   const [facePhoto, setFacePhoto] = useState<UploadedFile | null>(null);
