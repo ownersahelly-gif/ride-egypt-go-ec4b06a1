@@ -699,12 +699,12 @@ const DriverDashboard = () => {
                         const isAdHoc = slot.scheduleId.startsWith('adhoc_');
                         const isTestTrip = !!firstTodayTrip && firstTodayTrip.scheduleId === slot.scheduleId && firstTodayTrip.direction === slot.direction;
 
-                        // Time gate: can only start within 2 hours before departure (and up to 4h after for past trips)
+                        // Time gate: can only start within 2 hours before departure
                         const [slotH, slotM] = slot.time.split(':').map(Number);
                         const slotDate = new Date(slot.dateStr + 'T00:00:00');
                         slotDate.setHours(slotH, slotM, 0);
                         const msUntilDeparture = slotDate.getTime() - Date.now();
-                        const withinTwoHours = msUntilDeparture <= 2 * 60 * 60 * 1000 && msUntilDeparture >= -4 * 60 * 60 * 1000;
+                        const withinTwoHours = msUntilDeparture <= 2 * 60 * 60 * 1000 && msUntilDeparture > 0;
 
                         // Find schedule's min_passengers
                         const scheduleEntry = driverSchedules.find(s => s.id === slot.scheduleId);
