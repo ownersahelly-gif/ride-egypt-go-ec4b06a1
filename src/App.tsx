@@ -19,6 +19,7 @@ import DriverDashboard from "./pages/DriverDashboard.tsx";
 import TrackShuttle from "./pages/TrackShuttle.tsx";
 import ActiveRide from "./pages/ActiveRide.tsx";
 import AdminPanel from "./pages/AdminPanel.tsx";
+import DriverProfile from "./pages/DriverProfile.tsx";
 import Carpool from "./pages/Carpool.tsx";
 import CarpoolVerify from "./pages/CarpoolVerify.tsx";
 import CarpoolPost from "./pages/CarpoolPost.tsx";
@@ -51,6 +52,7 @@ const App = () => (
               <Route path="/track" element={<ProtectedRoute><TrackShuttle /></ProtectedRoute>} />
               <Route path="/active-ride" element={<ProtectedRoute><ActiveRide /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
+              <Route path="/driver/:id" element={<DriverProfile />} />
               <Route path="/carpool" element={<ProtectedRoute><Carpool /></ProtectedRoute>} />
               <Route path="/carpool/verify" element={<ProtectedRoute><CarpoolVerify /></ProtectedRoute>} />
               <Route path="/carpool/post" element={<ProtectedRoute><CarpoolPost /></ProtectedRoute>} />
