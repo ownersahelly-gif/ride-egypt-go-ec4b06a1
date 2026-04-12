@@ -1009,21 +1009,33 @@ const DriverDashboard = () => {
                   );
                 })()}
 
-                {/* How it works — show once when no bookings */}
-                {driverSchedules.length > 0 && todayBookings.length === 0 && (
-                  <div className="bg-card border border-border rounded-2xl p-4">
-                    <h4 className="font-semibold text-foreground text-sm mb-2 flex items-center gap-2">
-                      <Info className="w-4 h-4 text-primary" />
-                      {lang === 'ar' ? 'كيف تعمل الرحلات؟' : 'How trips work'}
-                    </h4>
-                    <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside">
-                      <li>{lang === 'ar' ? 'شغّل الاتصال (Go Online) حتى يرى الركاب رحلاتك' : 'Go Online so riders can see your trips'}</li>
-                      <li>{lang === 'ar' ? 'الركاب يحجزون رحلات الذهاب أو العودة أو الاثنين' : 'Riders book going, return, or round trips'}</li>
-                      <li>{lang === 'ar' ? 'عندما يحين وقت الرحلة، اضغط "ابدأ الرحلة"' : 'When it\'s trip time, tap "Start This Trip"'}</li>
-                      <li>{lang === 'ar' ? 'تابع الركاب وأكّد الصعود والنزول' : 'Track riders, confirm boarding and drop-off'}</li>
-                    </ol>
+                {/* Prompt if no schedule */}
+                {driverSchedules.length === 0 && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5">
+                    <h3 className="font-semibold text-foreground mb-1">{lang === 'ar' ? 'ابدأ بتحديد مسارك!' : 'Set up your route!'}</h3>
+                    <p className="text-sm text-muted-foreground mb-3">{lang === 'ar' ? 'اختر مسار وحدد أيام عملك لبدء استقبال الركاب' : 'Pick a route and set your work days to start receiving riders'}</p>
+                    <Button onClick={() => setTab('schedule')}>
+                      <Calendar className="w-4 h-4 me-1" />{lang === 'ar' ? 'إعداد الجدول' : 'Set Schedule'}
+                    </Button>
                   </div>
                 )}
+
+                {/* View all previous trips button */}
+                <Button
+                  variant="outline"
+                  className="w-full h-12 text-sm"
+                  onClick={() => setTab('trips')}
+                >
+                  <Navigation className="w-4 h-4 me-2" />
+                  {lang === 'ar' ? 'عرض جميع الرحلات السابقة' : 'View All Previous Trips'}
+                </Button>
+              </div>
+            )}
+
+            {/* ==================== EARNINGS TAB ==================== */}
+            {tab === 'earnings' && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-bold text-foreground text-center">{lang === 'ar' ? 'أرباحك' : 'Your Earnings'}</h2>
 
                 {/* Earnings summary */}
                 <div className="grid grid-cols-2 gap-3">
@@ -1036,17 +1048,6 @@ const DriverDashboard = () => {
                     <p className="text-2xl font-bold text-foreground">{monthlyEarnings.toFixed(0)} <span className="text-sm font-normal text-muted-foreground">EGP</span></p>
                   </div>
                 </div>
-
-                {/* Prompt if no schedule */}
-                {driverSchedules.length === 0 && (
-                  <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5">
-                    <h3 className="font-semibold text-foreground mb-1">{lang === 'ar' ? 'ابدأ بتحديد مسارك!' : 'Set up your route!'}</h3>
-                    <p className="text-sm text-muted-foreground mb-3">{lang === 'ar' ? 'اختر مسار وحدد أيام عملك لبدء استقبال الركاب' : 'Pick a route and set your work days to start receiving riders'}</p>
-                    <Button onClick={() => setTab('schedule')}>
-                      <Calendar className="w-4 h-4 me-1" />{lang === 'ar' ? 'إعداد الجدول' : 'Set Schedule'}
-                    </Button>
-                  </div>
-                )}
 
                 {/* All-time stats */}
                 <div className="bg-card border border-border rounded-2xl p-4">
@@ -1066,15 +1067,24 @@ const DriverDashboard = () => {
                   </div>
                 </div>
 
-                {/* View all previous trips button */}
-                <Button
-                  variant="outline"
-                  className="w-full h-12 text-sm"
-                  onClick={() => setTab('trips')}
-                >
-                  <Navigation className="w-4 h-4 me-2" />
-                  {lang === 'ar' ? 'عرض جميع الرحلات السابقة' : 'View All Previous Trips'}
-                </Button>
+                {/* Per-route earnings breakdown */}
+                {allRoutes.filter(r => scheduledRouteIds.has(r.id)).length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="font-semibold text-foreground text-sm">{lang === 'ar' ? 'الأرباح المتوقعة لكل مسار' : 'Expected Earnings Per Route'}</h3>
+                    {allRoutes.filter(r => scheduledRouteIds.has(r.id)).map(r => {
+                      const earnings = getExpectedEarnings(r);
+                      return (
+                        <div key={r.id} className="bg-card border border-border rounded-xl p-3 flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{lang === 'ar' ? r.name_ar : r.name_en}</p>
+                            <p className="text-xs text-muted-foreground">{r.price} EGP/{lang === 'ar' ? 'مقعد' : 'seat'}</p>
+                          </div>
+                          <p className="text-sm font-bold text-green-600">~{earnings.perTrip.toFixed(0)} EGP/{lang === 'ar' ? 'رحلة' : 'trip'}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1085,62 +1095,6 @@ const DriverDashboard = () => {
                   <h2 className="text-lg font-bold text-foreground">{lang === 'ar' ? 'اختر المسار الذي تريد الذهاب إليه' : 'Choose the route you want to go to'}</h2>
                   <p className="text-sm text-muted-foreground">{lang === 'ar' ? 'اختر مسار ثم حدد أيام وأوقات العمل' : 'Select a route then set your working days and times'}</p>
                 </div>
-                {driverSchedules.length > 0 && (
-                  <div className="space-y-3">
-                    {Object.entries(
-                      driverSchedules.reduce((acc: Record<string, any[]>, s) => {
-                        if (!acc[s.route_id]) acc[s.route_id] = [];
-                        acc[s.route_id].push(s);
-                        return acc;
-                      }, {})
-                    ).map(([routeId, schedules]) => {
-                      const routeInfo = (schedules as any[])[0]?.routes;
-                      return (
-                        <div key={routeId} className="bg-card border border-border rounded-2xl p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <div>
-                              <h4 className="font-semibold text-foreground">{lang === 'ar' ? routeInfo?.name_ar : routeInfo?.name_en}</h4>
-                              <p className="text-xs text-muted-foreground">{routeInfo?.price} EGP/{lang === 'ar' ? 'مقعد' : 'seat'}</p>
-                            </div>
-                          </div>
-                          {routeInfo?.origin_lat && routeInfo?.destination_lat && (() => {
-                            const routeStops = allRoutes.find((r: any) => r.id === routeId)?.stops || [];
-                            const sortedStops = [...routeStops].sort((a: any, b: any) => a.stop_order - b.stop_order);
-                            return (
-                              <MapView
-                                className="h-[200px] mb-3"
-                                markers={[
-                                  { lat: routeInfo.origin_lat, lng: routeInfo.origin_lng, label: 'A', color: 'green' },
-                                  ...sortedStops.map((s: any, i: number) => ({ lat: s.lat, lng: s.lng, label: `${i + 1}`, color: 'blue' as const })),
-                                  { lat: routeInfo.destination_lat, lng: routeInfo.destination_lng, label: 'B', color: 'red' },
-                                ]}
-                                origin={{ lat: routeInfo.origin_lat, lng: routeInfo.origin_lng }}
-                                destination={{ lat: routeInfo.destination_lat, lng: routeInfo.destination_lng }}
-                                waypoints={sortedStops.map((s: any) => ({ lat: s.lat, lng: s.lng }))}
-                                showDirections
-                                showUserLocation={false}
-                                zoom={10}
-                              />
-                            );
-                          })()}
-                          <div className="space-y-1.5">
-                            {(schedules as any[]).sort((a: any, b: any) => a.day_of_week - b.day_of_week).map((s: any) => (
-                              <div key={s.id} className="flex items-center justify-between bg-surface rounded-lg px-3 py-2">
-                                <div className="flex items-center gap-2 text-sm">
-                                  <span className="font-medium text-foreground w-16">{dayNames[s.day_of_week]}</span>
-                                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                                  <span className="text-muted-foreground">{formatTime12h(s.departure_time, lang)}</span>
-                                  {s.return_time && <><ArrowRight className="w-3 h-3 text-muted-foreground" /><span className="text-muted-foreground">{formatTime12h(s.return_time, lang)}</span></>}
-                                </div>
-                                <button onClick={() => deleteSchedule(s.id)} className="text-destructive/60 hover:text-destructive p-1"><Trash2 className="w-4 h-4" /></button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
 
                 {/* Add schedule form */}
                 {showScheduleForm ? (
