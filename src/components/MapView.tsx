@@ -161,7 +161,7 @@ const MapView = ({
         onClick={(e) => onMapClick?.(e.latLng?.lat() || 0, e.latLng?.lng() || 0)}
         options={{
           disableDefaultUI: false,
-          zoomControl: true,
+          zoomControl: false,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,

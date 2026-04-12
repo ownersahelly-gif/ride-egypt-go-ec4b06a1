@@ -700,7 +700,7 @@ const Dashboard = () => {
         />
       </div>
 
-      <div className="shrink-0 max-h-[45vh] overflow-y-auto bg-card border-t border-border pb-16">
+      <div className="shrink-0 overflow-y-auto bg-card border-t border-border pb-20" style={{ maxHeight: '50vh' }}>
         {step === 'search' && (
           <div className="p-4 space-y-4">
             <h2 className="text-lg font-bold text-foreground">{lang === 'ar' ? 'إلى أين تريد الذهاب؟' : 'Where are you going?'}</h2>
