@@ -248,6 +248,67 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ── Trip started notification → notify all booked riders ──
+    if (notification_type === "trip_started" && record?.shuttle_id && record?.route_id && record?.driver_id) {
+      const { shuttle_id, route_id, driver_id, scheduled_date, scheduled_time, direction } = record;
+
+      // Get driver name
+      const { data: driverProfile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("user_id", driver_id)
+        .single();
+      const driverName = driverProfile?.full_name || "Your driver";
+
+      // Get route name
+      const { data: routeData } = await supabase
+        .from("routes")
+        .select("name_en, name_ar")
+        .eq("id", route_id)
+        .single();
+      const routeName = routeData?.name_en || "your route";
+
+      // Get all confirmed bookings for this trip
+      let bookingsQuery = supabase
+        .from("bookings")
+        .select("user_id")
+        .eq("shuttle_id", shuttle_id)
+        .eq("route_id", route_id)
+        .in("status", ["confirmed", "boarded"]);
+      if (scheduled_date) bookingsQuery = bookingsQuery.eq("scheduled_date", scheduled_date);
+
+      const { data: tripBookings } = await bookingsQuery;
+      if (!tripBookings || tripBookings.length === 0) {
+        return new Response(
+          JSON.stringify({ message: "No bookings for this trip" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const riderIds = [...new Set(tripBookings.map((b: any) => b.user_id))];
+      const { data: tokens } = await supabase
+        .from("device_tokens")
+        .select("token, platform")
+        .in("user_id", riderIds);
+
+      if (tokens && tokens.length > 0) {
+        const dirLabel = direction === "return" ? "return" : "going";
+        await sendFCM(
+          tokens,
+          {
+            title: `🚐 ${driverName} has started the trip!`,
+            body: `The ${dirLabel} trip on ${routeName} is now active. Track the shuttle live!`,
+          },
+          { type: "trip_started", shuttle_id, route_id }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ message: "Trip started notifications sent", riderCount: riderIds.length }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // ── Ride message notification ──
     if (type === "INSERT" && record?.booking_id && record?.sender_id) {
       const bookingId = record.booking_id;
