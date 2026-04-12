@@ -12,7 +12,7 @@ import PlacesAutocomplete from '@/components/PlacesAutocomplete';
 import {
   MapPin, Clock, Users, ArrowRight, ChevronLeft, ChevronRight,
   Calendar, AlertCircle, Car, User as UserIcon, Loader2, CheckCircle2,
-  Navigation, Upload, Image as ImageIcon, ListOrdered, Phone, History, Package, Bookmark
+  Navigation, Upload, Image as ImageIcon, ListOrdered, Phone, History, Package, Bookmark, Star
 } from 'lucide-react';
 
 /** Haversine distance in km */
@@ -720,6 +720,13 @@ const BookRide = () => {
                             <Car className="w-3 h-3" />
                             <span>{ride.shuttle_info?.vehicle_model} · {ride.shuttle_info?.vehicle_plate}</span>
                           </div>
+                          {driverRatings[ride.driver_id] && (
+                            <div className="flex items-center gap-1 text-xs mt-0.5">
+                              <Star className="w-3 h-3 fill-secondary text-secondary" />
+                              <span className="font-medium text-foreground">{driverRatings[ride.driver_id].avg.toFixed(1)}</span>
+                              <span className="text-muted-foreground">({driverRatings[ride.driver_id].count})</span>
+                            </div>
+                          )}
                         </div>
                         <span className="text-lg font-bold text-primary">{ride.routes?.price} EGP</span>
                       </div>
