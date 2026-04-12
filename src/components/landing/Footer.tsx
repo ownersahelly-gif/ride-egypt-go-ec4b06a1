@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAppSettings } from '@/hooks/useAppSettings';
 
@@ -37,8 +38,8 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold text-foreground mb-3">{t('footer.legal')}</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-foreground transition-colors">{t('footer.privacy')}</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">{t('footer.terms')}</a></li>
+              <li><Link to="/legal?section=privacy" className="hover:text-foreground transition-colors">{t('footer.privacy')}</Link></li>
+              <li><Link to="/legal?section=terms" className="hover:text-foreground transition-colors">{t('footer.terms')}</Link></li>
             </ul>
             {/* Social Links */}
             {(socialFacebook || socialInstagram || socialTwitter) && (
