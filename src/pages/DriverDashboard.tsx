@@ -1350,41 +1350,43 @@ const DriverDashboard = () => {
                   {sortedKeys.length === 0 ? (
                     <div className="bg-card border border-border rounded-xl p-12 text-center text-muted-foreground">{lang === 'ar' ? 'لا توجد رحلات بعد' : 'No trips yet'}</div>
                   ) : sortedKeys.map(key => {
-                    const group = grouped[key];
-                    const first = group[0];
-                    const routeObj = first.routes;
+                    const entry = grouped[key];
+                    const group = entry.bookings;
+                    const routeObj = entry.routeInfo;
+                    const first = group.length > 0 ? group[0] : null;
                     const isExpanded = expandedTrips.has(key);
-                    const allBookings = group; // Keep all bookings visible including cancelled
                     const activeBookings = group.filter((b: any) => b.status !== 'cancelled');
                     const routeOrigin = { lat: routeObj?.origin_lat || 0, lng: routeObj?.origin_lng || 0 };
                     const routeDestination = { lat: routeObj?.destination_lat || 0, lng: routeObj?.destination_lng || 0 };
                     const optimizedOrder = isExpanded ? optimizePassengerOrder(activeBookings, routeOrigin, routeDestination) : [];
                     const validWaypoints = optimizedOrder.filter(wp => wp.coords.lat !== 0 && wp.coords.lng !== 0);
 
-                    // Check if this trip is expired (30+ min past departure)
-                    const [expH, expM] = (first.scheduled_time || '00:00').split(':').map(Number);
-                    const expDep = new Date(first.scheduled_date + 'T00:00:00');
+                    const tripDate = entry.date;
+                    const tripTime = entry.time || '00:00';
+                    const [expH, expM] = tripTime.split(':').map(Number);
+                    const expDep = new Date(tripDate + 'T00:00:00');
                     expDep.setHours(expH, expM, 0);
                     const tripIsExpired = (Date.now() - expDep.getTime()) > 30 * 60 * 1000;
-                    const tripIsPast = first.scheduled_date < new Date().toISOString().split('T')[0];
+                    const tripIsPast = tripDate < new Date().toISOString().split('T')[0];
 
                     return (
-                      <div key={key} className={`bg-card border rounded-2xl overflow-hidden ${tripIsExpired || tripIsPast ? 'border-destructive/30' : 'border-border'}`}>
+                      <div key={key} className={`bg-card border rounded-2xl overflow-hidden ${tripIsExpired || tripIsPast ? 'border-border opacity-60' : 'border-primary/20'}`}>
                         <button onClick={() => toggleTrip(key)} className="w-full flex items-center justify-between p-4 text-start hover:bg-muted/30 transition-colors">
                           <div className="flex-1">
                             <p className="font-semibold text-foreground text-sm">{lang === 'ar' ? routeObj?.name_ar : routeObj?.name_en}</p>
                             <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                              <span>{first.scheduled_date}</span>
-                              <span>{formatTime12h(first.scheduled_time, lang)}</span>
-                              <span>{activeBookings.filter((b: any) => b.trip_direction === 'go' || b.trip_direction === 'both').length} {lang === 'ar' ? 'ذهاب' : 'go'}</span>
-                              <span>{activeBookings.filter((b: any) => b.trip_direction === 'return' || b.trip_direction === 'both').length} {lang === 'ar' ? 'عودة' : 'back'}</span>
+                              <span>{tripDate}</span>
+                              <span>{formatTime12h(tripTime, lang)}</span>
+                              <span>{activeBookings.length} {lang === 'ar' ? 'راكب' : 'passengers'}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
                             {(tripIsExpired || tripIsPast) ? (
-                              <span className="text-xs px-2 py-1 rounded-full bg-destructive/10 text-destructive">{lang === 'ar' ? 'ملغي' : 'Cancelled'}</span>
+                              <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">{lang === 'ar' ? 'انتهت' : 'Past'}</span>
+                            ) : activeBookings.length > 0 ? (
+                              <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">{activeBookings.length} {lang === 'ar' ? 'حجز' : 'booked'}</span>
                             ) : (
-                              <span className={`text-xs px-2 py-1 rounded-full ${statusColors[first.status]}`}>{t(`booking.status.${first.status}`)}</span>
+                              <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">{lang === 'ar' ? 'بدون حجوزات' : 'No bookings'}</span>
                             )}
                             {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                           </div>
@@ -1392,10 +1394,9 @@ const DriverDashboard = () => {
 
                         {isExpanded && (() => {
                           const today = new Date().toISOString().split('T')[0];
-                          const isTripToday = first.scheduled_date === today;
-                          // Check 30-min expiry window
-                          const [tripH, tripM] = (first.scheduled_time || '00:00').split(':').map(Number);
-                          const tripDep = new Date(first.scheduled_date + 'T00:00:00');
+                          const isTripToday = tripDate === today;
+                          const [tripH, tripM] = tripTime.split(':').map(Number);
+                          const tripDep = new Date(tripDate + 'T00:00:00');
                           tripDep.setHours(tripH, tripM, 0);
                           const msSinceTripDep = Date.now() - tripDep.getTime();
                           const tripExpired = msSinceTripDep > 30 * 60 * 1000;
@@ -1420,6 +1421,14 @@ const DriverDashboard = () => {
                                   {lang === 'ar' ? 'ابدأ الرحلة الآن' : 'Start This Trip'}
                                 </Button>
                               </Link>
+                            )}
+                            {!tripExpired && !tripIsPast && activeBookings.length === 0 && (
+                              <div className="bg-muted/50 rounded-xl p-3 flex items-center gap-2">
+                                <Users className="w-4 h-4 text-muted-foreground" />
+                                <p className="text-sm text-muted-foreground">
+                                  {lang === 'ar' ? 'لا يوجد حجوزات بعد لهذه الرحلة' : 'No bookings yet for this trip'}
+                                </p>
+                              </div>
                             )}
                             {validWaypoints.length > 0 && (
                               <MapView
