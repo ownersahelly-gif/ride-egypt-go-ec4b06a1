@@ -364,6 +364,23 @@ const Signup = () => {
                 </p>
               </div>
             </button>
+
+            <button
+              onClick={() => setRole('company')}
+              className="w-full bg-card border-2 border-border rounded-2xl p-6 hover:border-amber-500 transition-all text-start flex items-center gap-4 group"
+            >
+              <div className="w-14 h-14 rounded-xl bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 shrink-0">
+                <Building2 className="w-7 h-7 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground text-lg">
+                  {lang === 'ar' ? 'شركة / مجموعة نقل' : 'Company / Transport Group'}
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {lang === 'ar' ? 'لديك مجموعة واتساب أو شركة نقل؟ انضم كشريك' : 'Have a WhatsApp group or transport company? Join as partner'}
+                </p>
+              </div>
+            </button>
           </div>
 
           <Link to="/login" className="block text-center text-sm text-primary font-medium hover:underline mt-6">
@@ -372,6 +389,11 @@ const Signup = () => {
         </div>
       </div>
     );
+  }
+
+  // Company signup flow
+  if (role === 'company') {
+    return <CompanySignup lang={lang} t={t} appName={appName} signUp={signUp} navigate={navigate} toast={toast} referralCode={referralCode} setRole={setRole} Arrow={Arrow} BackArrow={BackArrow} />;
   }
 
   // Rider: simple form
