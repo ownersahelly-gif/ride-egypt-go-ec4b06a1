@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Lock, User, ArrowRight, ArrowLeft, Car, Users, Upload, Camera, CheckCircle2, Phone, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, ArrowLeft, Car, Users, Upload, Camera, CheckCircle2, Phone, Eye, EyeOff, Building2 } from 'lucide-react';
 
-type UserRole = 'rider' | 'driver';
+type UserRole = 'rider' | 'driver' | 'company';
 
 interface UploadedFile {
   file: File;
