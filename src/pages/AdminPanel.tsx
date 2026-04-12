@@ -598,6 +598,7 @@ const AdminPanel = () => {
     { key: 'earnings', icon: DollarSign, label: lang === 'ar' ? 'الإيرادات' : 'Earnings' },
     { key: 'partners', icon: Building2, label: lang === 'ar' ? 'الشركاء' : 'Partners' },
     { key: 'partner_routes', icon: Link2, label: lang === 'ar' ? 'مسارات الشركاء' : 'Partner Routes' },
+    { key: 'partner_packages', icon: Package, label: lang === 'ar' ? 'باقات الشركاء' : 'Partner Packages' },
     { key: 'users', icon: Users, label: lang === 'ar' ? 'المستخدمين' : 'Users' },
     { key: 'route_requests', icon: MapPin, label: lang === 'ar' ? 'طلبات المسارات' : 'Route Requests' },
     { key: 'content', icon: Globe, label: lang === 'ar' ? 'المحتوى' : 'Content' },
