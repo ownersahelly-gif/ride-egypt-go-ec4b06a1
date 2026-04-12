@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ChevronLeft, ChevronRight, MapPin, Navigation, Calendar } from 'lucide-react';
 import PlacesAutocomplete from '@/components/PlacesAutocomplete';
-import MapPinPicker from '@/components/MapPinPicker';
 
 type Location = { name: string; lat: number; lng: number };
 
@@ -33,7 +32,6 @@ const RequestRoute = () => {
   const [preferredTime, setPreferredTime] = useState('');
   const [preferredDays, setPreferredDays] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activePin, setActivePin] = useState<'origin' | 'destination' | null>(null);
 
   const dayLabels = lang === 'ar'
     ? ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
@@ -48,12 +46,6 @@ const RequestRoute = () => {
   const selectWeekdays = () => setPreferredDays([0, 1, 2, 3, 4]);
   const selectWeekend = () => setPreferredDays([5, 6]);
   const selectAll = () => setPreferredDays([0, 1, 2, 3, 4, 5, 6]);
-
-  const handlePinConfirm = (type: 'origin' | 'destination', loc: { lat: number; lng: number; name: string }) => {
-    if (type === 'origin') setOrigin(loc);
-    else setDestination(loc);
-    setActivePin(null);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +74,7 @@ const RequestRoute = () => {
   };
 
   return (
-    <div className="h-screen bg-surface flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-surface flex flex-col">
       <header className="bg-card border-b border-border shrink-0 z-40 safe-area-top">
         <div className="container mx-auto flex items-center h-16 px-4 gap-4">
           <Link to="/dashboard"><Button variant="ghost" size="icon"><Back className="w-5 h-5" /></Button></Link>
@@ -91,15 +83,6 @@ const RequestRoute = () => {
       </header>
 
       <main className="flex-1 overflow-y-auto container mx-auto px-4 py-8 max-w-2xl space-y-6 pb-24">
-        {/* Map */}
-        <MapPinPicker
-          className="h-[350px] border border-border rounded-2xl"
-          activePin={activePin}
-          origin={origin.lat ? origin : undefined}
-          destination={destination.lat ? destination : undefined}
-          onConfirm={handlePinConfirm}
-          onCancel={() => setActivePin(null)}
-        />
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="bg-card rounded-2xl border border-border p-6 space-y-5">
@@ -114,19 +97,9 @@ const RequestRoute = () => {
                   placeholder={t('routeRequest.originPlaceholder')}
                   value={origin.name}
                   iconColor="text-green-500"
-                  onSelect={(place) => { setOrigin(place); setActivePin(null); }}
+                  onSelect={(place) => setOrigin(place)}
                 />
               </div>
-              <Button
-                type="button"
-                variant={activePin === 'origin' ? 'default' : 'outline'}
-                size="sm"
-                className="shrink-0 mt-0"
-                onClick={() => setActivePin(activePin === 'origin' ? null : 'origin')}
-              >
-                <MapPin className="w-4 h-4 me-1" />
-                {lang === 'ar' ? 'الخريطة' : 'Map'}
-              </Button>
             </div>
           </div>
 
@@ -141,19 +114,9 @@ const RequestRoute = () => {
                   placeholder={t('routeRequest.destPlaceholder')}
                   value={destination.name}
                   iconColor="text-destructive"
-                  onSelect={(place) => { setDestination(place); setActivePin(null); }}
+                  onSelect={(place) => setDestination(place)}
                 />
               </div>
-              <Button
-                type="button"
-                variant={activePin === 'destination' ? 'default' : 'outline'}
-                size="sm"
-                className="shrink-0 mt-0"
-                onClick={() => setActivePin(activePin === 'destination' ? null : 'destination')}
-              >
-                <MapPin className="w-4 h-4 me-1" />
-                {lang === 'ar' ? 'الخريطة' : 'Map'}
-              </Button>
             </div>
           </div>
 
