@@ -744,9 +744,11 @@ const DriverDashboard = () => {
                                   <div>
                                     <div className="flex items-center gap-2">
                                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                                        slot.isPast ? 'bg-muted text-muted-foreground' : slot.direction === 'go' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                                        isExpired ? 'bg-destructive/10 text-destructive' : slot.isPast ? 'bg-muted text-muted-foreground' : slot.direction === 'go' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
                                       }`}>
-                                        {slot.isPast
+                                        {isExpired
+                                          ? (lang === 'ar' ? '⚠ فات الموعد' : '⚠ Expired')
+                                          : slot.isPast
                                           ? (lang === 'ar' ? 'انتهت' : 'Passed')
                                           : slot.direction === 'go' ? (lang === 'ar' ? 'ذهاب' : 'Going') : (lang === 'ar' ? 'عودة' : 'Returning')}
                                       </span>
