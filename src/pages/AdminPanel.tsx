@@ -68,6 +68,11 @@ const AdminPanel = () => {
   const [contentSettings, setContentSettings] = useState<Record<string, string>>({});
   const [savingContent, setSavingContent] = useState(false);
 
+  // User filters
+  const [userTypeFilter, setUserTypeFilter] = useState('all');
+  const [userTimeFilter, setUserTimeFilter] = useState('all');
+  const [userSearch, setUserSearch] = useState('');
+
   // Route form
   const [showRouteForm, setShowRouteForm] = useState(false);
   const [editingRouteId, setEditingRouteId] = useState<string | null>(null);
