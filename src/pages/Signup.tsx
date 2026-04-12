@@ -406,8 +406,11 @@ const Signup = () => {
 
   // Driver: multi-step form
   return (
-    <div className="min-h-screen bg-surface px-4 py-8 overflow-y-auto">
-      <div className="w-full max-w-md mx-auto">
+    <div
+      className="h-[100dvh] bg-surface overflow-y-auto px-4 py-8"
+      style={{ WebkitOverflowScrolling: 'touch' }}
+    >
+      <div className="w-full max-w-md mx-auto pb-8">
         <div className="text-center mb-4">
           <Link to="/" className="text-3xl font-bold text-primary font-arabic">
             {lang === 'ar' ? 'مسار' : 'Massar'}
