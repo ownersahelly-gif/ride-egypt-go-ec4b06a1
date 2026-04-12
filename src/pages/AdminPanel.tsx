@@ -64,6 +64,10 @@ const AdminPanel = () => {
   const [globalWaitingTime, setGlobalWaitingTime] = useState('3');
   const [savingWaitingTime, setSavingWaitingTime] = useState(false);
 
+  // Content settings
+  const [contentSettings, setContentSettings] = useState<Record<string, string>>({});
+  const [savingContent, setSavingContent] = useState(false);
+
   // Route form
   const [showRouteForm, setShowRouteForm] = useState(false);
   const [editingRouteId, setEditingRouteId] = useState<string | null>(null);
@@ -538,6 +542,7 @@ const AdminPanel = () => {
     { key: 'bookings', icon: Ticket, label: lang === 'ar' ? 'الحجوزات' : 'Bookings' },
     { key: 'users', icon: Users, label: lang === 'ar' ? 'المستخدمين' : 'Users' },
     { key: 'route_requests', icon: MapPin, label: lang === 'ar' ? 'طلبات المسارات' : 'Route Requests' },
+    { key: 'content', icon: Globe, label: lang === 'ar' ? 'المحتوى' : 'Content' },
     { key: 'settings', icon: Settings, label: lang === 'ar' ? 'الإعدادات' : 'Settings' },
   ];
 
