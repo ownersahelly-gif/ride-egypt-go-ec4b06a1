@@ -1249,6 +1249,173 @@ const AdminPanel = () => {
           </div>
         )}
 
+        {/* Content Tab */}
+        {tab === 'content' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-foreground">{lang === 'ar' ? 'إدارة المحتوى' : 'Content Management'}</h2>
+            <p className="text-sm text-muted-foreground">
+              {lang === 'ar' ? 'غيّر النصوص والمحتوى المعروض للمستخدمين بدون تحديث التطبيق' : 'Change text and content shown to users without updating the app'}
+            </p>
+
+            {/* Hero Section */}
+            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+              <h3 className="font-semibold text-foreground">{lang === 'ar' ? '🏠 الصفحة الرئيسية (Hero)' : '🏠 Hero Section'}</h3>
+              {[
+                { key: 'hero_tagline', label: lang === 'ar' ? 'الشعار' : 'Tagline' },
+                { key: 'hero_title', label: lang === 'ar' ? 'العنوان الرئيسي' : 'Main Title' },
+                { key: 'hero_title_highlight', label: lang === 'ar' ? 'العنوان المميز' : 'Highlighted Title' },
+                { key: 'hero_subtitle', label: lang === 'ar' ? 'الوصف' : 'Subtitle' },
+              ].map(field => (
+                <div key={field.key} className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">{field.label} (EN)</Label>
+                    <Input
+                      value={contentSettings[`${field.key}_en`] || ''}
+                      onChange={(e) => setContentSettings(prev => ({ ...prev, [`${field.key}_en`]: e.target.value }))}
+                      placeholder={`${field.label} in English`}
+                      dir="ltr"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">{field.label} (AR)</Label>
+                    <Input
+                      value={contentSettings[`${field.key}_ar`] || ''}
+                      onChange={(e) => setContentSettings(prev => ({ ...prev, [`${field.key}_ar`]: e.target.value }))}
+                      placeholder={`${field.label} بالعربية`}
+                      dir="rtl"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Announcement Banner */}
+            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+              <h3 className="font-semibold text-foreground">{lang === 'ar' ? '📢 إعلان للمستخدمين' : '📢 Announcement Banner'}</h3>
+              <p className="text-xs text-muted-foreground">
+                {lang === 'ar' ? 'يظهر في أعلى لوحة القيادة. اتركه فارغاً لإخفائه.' : 'Shows at the top of the dashboard. Leave empty to hide.'}
+              </p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">English</Label>
+                  <Input
+                    value={contentSettings.announcement_en || ''}
+                    onChange={(e) => setContentSettings(prev => ({ ...prev, announcement_en: e.target.value }))}
+                    placeholder="e.g. 🎉 New routes available!"
+                    dir="ltr"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">العربية</Label>
+                  <Input
+                    value={contentSettings.announcement_ar || ''}
+                    onChange={(e) => setContentSettings(prev => ({ ...prev, announcement_ar: e.target.value }))}
+                    placeholder="مثال: 🎉 مسارات جديدة متاحة!"
+                    dir="rtl"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Info */}
+            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+              <h3 className="font-semibold text-foreground">{lang === 'ar' ? '📞 معلومات التواصل' : '📞 Contact Info'}</h3>
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs">{lang === 'ar' ? 'الهاتف' : 'Phone'}</Label>
+                  <Input value={contentSettings.contact_phone || ''} onChange={(e) => setContentSettings(prev => ({ ...prev, contact_phone: e.target.value }))} placeholder="+20..." dir="ltr" />
+                </div>
+                <div>
+                  <Label className="text-xs">{lang === 'ar' ? 'البريد الإلكتروني' : 'Email'}</Label>
+                  <Input value={contentSettings.contact_email || ''} onChange={(e) => setContentSettings(prev => ({ ...prev, contact_email: e.target.value }))} placeholder="info@..." dir="ltr" />
+                </div>
+                <div>
+                  <Label className="text-xs">WhatsApp</Label>
+                  <Input value={contentSettings.contact_whatsapp || ''} onChange={(e) => setContentSettings(prev => ({ ...prev, contact_whatsapp: e.target.value }))} placeholder="+20..." dir="ltr" />
+                </div>
+              </div>
+            </div>
+
+            {/* Social Links */}
+            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+              <h3 className="font-semibold text-foreground">{lang === 'ar' ? '🌐 روابط التواصل الاجتماعي' : '🌐 Social Links'}</h3>
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs">Facebook</Label>
+                  <Input value={contentSettings.social_facebook || ''} onChange={(e) => setContentSettings(prev => ({ ...prev, social_facebook: e.target.value }))} placeholder="https://facebook.com/..." dir="ltr" />
+                </div>
+                <div>
+                  <Label className="text-xs">Instagram</Label>
+                  <Input value={contentSettings.social_instagram || ''} onChange={(e) => setContentSettings(prev => ({ ...prev, social_instagram: e.target.value }))} placeholder="https://instagram.com/..." dir="ltr" />
+                </div>
+                <div>
+                  <Label className="text-xs">Twitter / X</Label>
+                  <Input value={contentSettings.social_twitter || ''} onChange={(e) => setContentSettings(prev => ({ ...prev, social_twitter: e.target.value }))} placeholder="https://x.com/..." dir="ltr" />
+                </div>
+              </div>
+            </div>
+
+            {/* Feature Toggles */}
+            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+              <h3 className="font-semibold text-foreground">{lang === 'ar' ? '⚙️ تشغيل/إيقاف الميزات' : '⚙️ Feature Toggles'}</h3>
+              <p className="text-xs text-muted-foreground">
+                {lang === 'ar' ? 'تحكم في إظهار أو إخفاء الأقسام للمستخدمين' : 'Control which sections are visible to users'}
+              </p>
+              {[
+                { key: 'feature_carpool_enabled', label: lang === 'ar' ? 'مشاركة الرحلات (Carpool)' : 'Carpool' },
+                { key: 'feature_packages_enabled', label: lang === 'ar' ? 'الباقات (Packages)' : 'Packages' },
+                { key: 'feature_track_shuttle_enabled', label: lang === 'ar' ? 'تتبع الشاتل' : 'Track Shuttle' },
+              ].map(toggle => (
+                <div key={toggle.key} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                  <span className="text-sm text-foreground">{toggle.label}</span>
+                  <Button
+                    variant={contentSettings[toggle.key] !== 'false' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setContentSettings(prev => ({
+                      ...prev,
+                      [toggle.key]: prev[toggle.key] === 'false' ? 'true' : 'false',
+                    }))}
+                  >
+                    {contentSettings[toggle.key] !== 'false' ? (lang === 'ar' ? 'مفعّل' : 'Enabled') : (lang === 'ar' ? 'معطّل' : 'Disabled')}
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {/* Save Button */}
+            <Button
+              className="w-full"
+              disabled={savingContent}
+              onClick={async () => {
+                setSavingContent(true);
+                const contentKeys = [
+                  'hero_tagline_en', 'hero_tagline_ar', 'hero_title_en', 'hero_title_ar',
+                  'hero_title_highlight_en', 'hero_title_highlight_ar', 'hero_subtitle_en', 'hero_subtitle_ar',
+                  'announcement_en', 'announcement_ar',
+                  'contact_phone', 'contact_email', 'contact_whatsapp',
+                  'social_facebook', 'social_instagram', 'social_twitter',
+                  'feature_carpool_enabled', 'feature_packages_enabled', 'feature_track_shuttle_enabled',
+                ];
+                let hasError = false;
+                for (const key of contentKeys) {
+                  if (contentSettings[key] !== undefined) {
+                    const { error } = await supabase.from('app_settings').upsert(
+                      { key, value: contentSettings[key] || '' },
+                      { onConflict: 'key' }
+                    );
+                    if (error) { toast.error(error.message); hasError = true; break; }
+                  }
+                }
+                if (!hasError) toast.success(lang === 'ar' ? 'تم حفظ المحتوى — أعد تحميل لرؤية التغييرات' : 'Content saved — reload to see changes');
+                setSavingContent(false);
+              }}
+            >
+              {savingContent ? <Loader2 className="w-4 h-4 animate-spin me-2" /> : null}
+              {lang === 'ar' ? 'حفظ جميع التغييرات' : 'Save All Changes'}
+            </Button>
+          </div>
+        )}
+
         {/* Packages Tab */}
         {tab === 'packages' && (
           <PackagePricing lang={lang} routes={routes} />
