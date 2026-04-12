@@ -633,8 +633,9 @@ const PartnerDashboard = () => {
                           <span className={`text-xs px-2 py-0.5 rounded-full ${
                             r.status === 'approved' ? 'bg-green-100 text-green-700' :
                             r.status === 'rejected' ? 'bg-destructive/10 text-destructive' :
+                            r.status === 'draft' ? 'bg-muted text-muted-foreground' :
                             'bg-amber-100 text-amber-700'
-                          }`}>{r.status}</span>
+                          }`}>{r.status === 'draft' ? (lang === 'ar' ? 'مسودة' : 'draft') : r.status}</span>
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground">{r.origin_name} → {r.destination_name}</p>
