@@ -32,6 +32,7 @@ const MyBookings = () => {
   const [chatBookingId, setChatBookingId] = useState<string | null>(null);
   const [ratingBooking, setRatingBooking] = useState<any>(null);
   const [ratedBookingIds, setRatedBookingIds] = useState<Set<string>>(new Set());
+  const [unreadBookings, setUnreadBookings] = useState<Set<string>>(new Set());
   const [driverProfiles, setDriverProfiles] = useState<Record<string, any>>({});
   // All bookings on same shuttle+date for ETA calculation
   const [peerBookings, setPeerBookings] = useState<Record<string, any[]>>({});
@@ -46,6 +47,22 @@ const MyBookings = () => {
       ]);
       setBookings(bookingsData || []);
       setRatedBookingIds(new Set((ratingsData || []).map(r => r.booking_id)));
+
+      // Fetch unread messages
+      const activeBookingIds = (bookingsData || [])
+        .filter((b: any) => ['confirmed', 'boarded'].includes(b.status))
+        .map((b: any) => b.id);
+      if (activeBookingIds.length > 0) {
+        const { data: unreadData } = await supabase
+          .from('ride_messages')
+          .select('booking_id')
+          .in('booking_id', activeBookingIds)
+          .neq('sender_id', user.id)
+          .eq('is_read', false);
+        const unread = new Set<string>();
+        (unreadData || []).forEach((m: any) => unread.add(m.booking_id));
+        setUnreadBookings(unread);
+      }
 
       // Fetch driver profiles
       const driverIds = [...new Set((bookingsData || []).map((b: any) => b.shuttles?.driver_id).filter(Boolean))];
@@ -335,9 +352,12 @@ const MyBookings = () => {
                         </a>
                       )}
                       {['confirmed', 'boarded'].includes(booking.status) && (
-                        <Button variant="outline" size="sm" onClick={() => setChatBookingId(booking.id)}>
+                        <Button variant="outline" size="sm" className="relative" onClick={() => setChatBookingId(booking.id)}>
                           <MessageCircle className="w-3.5 h-3.5 me-1" />
                           {lang === 'ar' ? 'محادثة' : 'Chat'}
+                          {unreadBookings.has(booking.id) && (
+                            <span className="absolute -top-1 -end-1 w-2.5 h-2.5 bg-destructive rounded-full" />
+                          )}
                         </Button>
                       )}
                       {['confirmed', 'boarded'].includes(booking.status) && (
