@@ -1507,10 +1507,10 @@ const DriverDashboard = () => {
                                   <Play className="w-5 h-5 me-2" />
                                   {lang === 'ar' ? 'ابدأ الرحلة' : 'Start Trip'}
                                 </Button>
-                                <p className="text-xs text-muted-foreground text-center mt-2 flex items-center justify-center gap-1">
-                                  <Clock className="w-3.5 h-3.5" />
-                                  {getWaitMessage()}
-                                </p>
+                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-2 flex items-center justify-center gap-2">
+                                  <Clock className="w-4 h-4 text-amber-600" />
+                                  <p className="text-sm font-medium text-amber-700">{getWaitMessage()}</p>
+                                </div>
                               </div>
                             )}
                           </div>
