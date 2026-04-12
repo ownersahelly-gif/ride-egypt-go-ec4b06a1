@@ -1452,11 +1452,61 @@ const DriverDashboard = () => {
                       const tripDep = new Date(tripDate + 'T00:00:00');
                       tripDep.setHours(tripH, tripM, 0);
                       const msSinceTripDep = nowMs - tripDep.getTime();
+                      const msUntilTripDep = tripDep.getTime() - nowMs;
                       const tripExpired = msSinceTripDep > 30 * 60 * 1000;
-                      const withinWindow = (tripDep.getTime() - nowMs) <= 2 * 60 * 60 * 1000 && msSinceTripDep <= 30 * 60 * 1000;
-                      const canStartTrip = isTripToday && shuttle?.status === 'active' && activeBookings.length > 0 && withinWindow && !tripExpired;
+                      const withinWindow = msUntilTripDep <= 2 * 60 * 60 * 1000 && msSinceTripDep <= 30 * 60 * 1000;
+                      const canStartTrip = isTripToday && shuttle?.status === 'active' && withinWindow && !tripExpired;
+                      const tooEarly = !tripExpired && msUntilTripDep > 2 * 60 * 60 * 1000;
+
+                      // Format wait time
+                      const getWaitMessage = () => {
+                        if (!isTripToday) {
+                          return lang === 'ar' 
+                            ? `الرحلة ${tripDayLabel} الساعة ${formatTime12h(tripTime, lang)}` 
+                            : `Trip is on ${tripDayLabel} at ${formatTime12h(tripTime, lang)}`;
+                        }
+                        const hoursLeft = Math.floor(msUntilTripDep / 3600000);
+                        const minsLeft = Math.floor((msUntilTripDep % 3600000) / 60000);
+                        if (hoursLeft > 0) {
+                          return lang === 'ar'
+                            ? `يمكنك بدء الرحلة بعد ${hoursLeft} ساعة و ${minsLeft} دقيقة`
+                            : `You can start the trip in ${hoursLeft}h ${minsLeft}m`;
+                        }
+                        return lang === 'ar'
+                          ? `يمكنك بدء الرحلة بعد ${minsLeft} دقيقة`
+                          : `You can start the trip in ${minsLeft}m`;
+                      };
+
                       return (
                       <div className="border-t border-border p-4 space-y-3">
+                        {/* Start Trip Button - always visible */}
+                        {!tripExpired && !tripIsPast && (
+                          <div>
+                            {canStartTrip ? (
+                              <Button
+                                className="w-full h-12 text-base rounded-xl"
+                                size="lg"
+                                onClick={() => startTrip({ scheduleId: key, routeId: key.split('__')[1], dateStr: tripDate, time: tripTime, direction: 'go' })}
+                                disabled={startingTrip}
+                              >
+                                {startingTrip ? <Loader2 className="w-5 h-5 animate-spin me-2" /> : <Play className="w-5 h-5 me-2" />}
+                                {lang === 'ar' ? 'ابدأ الرحلة الآن' : 'Start This Trip'}
+                              </Button>
+                            ) : (
+                              <div>
+                                <Button className="w-full h-12 text-base rounded-xl opacity-50" size="lg" disabled>
+                                  <Play className="w-5 h-5 me-2" />
+                                  {lang === 'ar' ? 'ابدأ الرحلة' : 'Start Trip'}
+                                </Button>
+                                <p className="text-xs text-muted-foreground text-center mt-2 flex items-center justify-center gap-1">
+                                  <Clock className="w-3.5 h-3.5" />
+                                  {getWaitMessage()}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {tripExpired && isTripToday && (
                           <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 flex items-start gap-2">
                             <AlertCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
@@ -1465,14 +1515,7 @@ const DriverDashboard = () => {
                             </p>
                           </div>
                         )}
-                        {canStartTrip && (
-                          <Link to="/active-ride">
-                            <Button className="w-full h-12 text-base rounded-xl mb-2" size="lg">
-                              <Play className="w-5 h-5 me-2" />
-                              {lang === 'ar' ? 'ابدأ الرحلة الآن' : 'Start This Trip'}
-                            </Button>
-                          </Link>
-                        )}
+
                         {!tripExpired && !tripIsPast && activeBookings.length === 0 && (
                           <div className="bg-muted/50 rounded-xl p-3 flex items-center gap-2">
                             <Users className="w-4 h-4 text-muted-foreground" />
