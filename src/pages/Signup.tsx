@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -99,6 +99,8 @@ const CompanySignup = ({ lang, t, appName, signUp, navigate, toast, referralCode
   const [numRoutes, setNumRoutes] = useState('');
   const [bankDetails, setBankDetails] = useState('');
 
+  const generateSixDigitCode = () => String(Math.floor(100000 + Math.random() * 900000));
+
   const handleSubmit = async () => {
     if (!acceptedTerms) {
       toast({ title: lang === 'ar' ? 'يجب الموافقة على الشروط والأحكام' : 'You must accept the Terms & Conditions', variant: 'destructive' });
@@ -130,15 +132,14 @@ const CompanySignup = ({ lang, t, appName, signUp, navigate, toast, referralCode
           accepted_terms_at: new Date().toISOString(),
         }).eq('user_id', userId);
 
-        // Create partner company
-        const referralCode = companyName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) + Math.random().toString(36).slice(2, 6);
+        // Create partner company with 6-digit referral code
         await supabase.from('partner_companies').insert({
           user_id: userId,
           name: companyName,
           contact_email: email,
           contact_phone: phone,
           bank_details: bankDetails || null,
-          referral_code: referralCode,
+          referral_code: generateSixDigitCode(),
           notes: `Clients: ${numClients}, Drivers: ${numDrivers}, Routes: ${numRoutes}`,
         });
 
@@ -295,7 +296,6 @@ const Signup = () => {
   const { t, lang, appName } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [searchParams] = useSearchParams();
   const [role, setRole] = useState<UserRole | null>(null);
   const [driverStep, setDriverStep] = useState(1);
   const [fullName, setFullName] = useState('');
@@ -305,7 +305,7 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const referralCode = searchParams.get('ref') || '';
+  const [referralCode, setReferralCode] = useState('');
 
   // Driver photos
   const [facePhoto, setFacePhoto] = useState<UploadedFile | null>(null);
@@ -438,14 +438,7 @@ const Signup = () => {
           accepted_terms_at: new Date().toISOString(),
         }).eq('user_id', userId);
 
-        // Track referral if present
-        if (referralCode) {
-          const { data: partner } = await supabase.from('partner_companies').select('id').eq('referral_code', referralCode).eq('status', 'approved').single();
-          if (partner) {
-            await supabase.from('profiles').update({ referred_by_partner_id: partner.id }).eq('user_id', userId);
-            await supabase.from('partner_referrals').insert({ partner_id: partner.id, referred_user_id: userId, referral_code_used: referralCode });
-          }
-        }
+        // Drivers don't use referral codes
 
         // Upload all documents
         const uploads = await Promise.all([
@@ -676,11 +669,21 @@ const Signup = () => {
               </Label>
             </div>
 
-            {referralCode && (
-              <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-                {lang === 'ar' ? `كود الإحالة: ${referralCode}` : `Referral code: ${referralCode}`}
-              </p>
-            )}
+            {/* Referral Code Input */}
+            <div className="space-y-2">
+              <Label>{lang === 'ar' ? 'كود الإحالة (اختياري)' : 'Referral Code (optional)'}</Label>
+              <Input
+                placeholder={lang === 'ar' ? 'أدخل كود الإحالة المكون من 6 أرقام' : 'Enter 6-digit referral code'}
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                maxLength={6}
+                inputMode="numeric"
+                className="text-center tracking-[0.3em] text-lg font-bold"
+              />
+              {referralCode.length === 6 && (
+                <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> {lang === 'ar' ? 'سيتم ربط حسابك بالشركة' : 'Your account will be linked to the partner'}</p>
+              )}
+            </div>
 
             <Button type="submit" className="w-full gap-2" size="lg" disabled={loading || !acceptedTerms}>
               {loading ? (lang === 'ar' ? 'جاري التسجيل...' : 'Creating account...') : t('auth.signup')}

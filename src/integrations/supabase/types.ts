@@ -710,6 +710,66 @@ export type Database = {
           },
         ]
       }
+      partner_package_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          id: string
+          package_name_ar: string
+          package_name_en: string
+          partner_id: string
+          ride_count: number
+          route_request_id: string | null
+          status: string
+          suggested_price: number
+          updated_at: string
+          validity_days: number
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          package_name_ar?: string
+          package_name_en: string
+          partner_id: string
+          ride_count?: number
+          route_request_id?: string | null
+          status?: string
+          suggested_price?: number
+          updated_at?: string
+          validity_days?: number
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          package_name_ar?: string
+          package_name_en?: string
+          partner_id?: string
+          ride_count?: number
+          route_request_id?: string | null
+          status?: string
+          suggested_price?: number
+          updated_at?: string
+          validity_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_package_requests_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_package_requests_route_request_id_fkey"
+            columns: ["route_request_id"]
+            isOneToOne: false
+            referencedRelation: "partner_route_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_referrals: {
         Row: {
           created_at: string
