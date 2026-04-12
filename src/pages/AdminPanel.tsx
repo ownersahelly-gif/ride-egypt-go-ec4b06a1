@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import PackagePricing from '@/components/admin/PackagePricing';
 
-type AdminTab = 'routes' | 'drivers' | 'shuttles' | 'bookings' | 'analytics' | 'approvals' | 'settings' | 'carpool' | 'users' | 'route_requests' | 'packages' | 'content' | 'refunds';
+type AdminTab = 'routes' | 'drivers' | 'shuttles' | 'bookings' | 'analytics' | 'approvals' | 'settings' | 'carpool' | 'users' | 'route_requests' | 'packages' | 'content' | 'refunds' | 'earnings' | 'partners' | 'partner_routes';
 
 const AdminPanel = () => {
   const { user, signOut } = useAuth();
