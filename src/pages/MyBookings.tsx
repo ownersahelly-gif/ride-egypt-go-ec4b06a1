@@ -465,20 +465,31 @@ const MyBookings = () => {
                       {booking.custom_pickup_name && (
                         <div className="flex items-start gap-2 text-sm">
                           <MapPin className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                          <div>
+                          <div className="flex-1 min-w-0">
                             <p className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'نقطة الركوب' : 'Pickup'}</p>
-                            <p className="text-foreground text-xs">{booking.custom_pickup_name}</p>
+                            <p className="text-foreground text-xs truncate">{booking.custom_pickup_name}</p>
                           </div>
                         </div>
                       )}
                       {booking.custom_dropoff_name && (
                         <div className="flex items-start gap-2 text-sm">
                           <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
-                          <div>
+                          <div className="flex-1 min-w-0">
                             <p className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'نقطة النزول' : 'Dropoff'}</p>
-                            <p className="text-foreground text-xs">{booking.custom_dropoff_name}</p>
+                            <p className="text-foreground text-xs truncate">{booking.custom_dropoff_name}</p>
                           </div>
                         </div>
+                      )}
+                      {['confirmed', 'pending', 'quote_pending'].includes(booking.status) && !isExpired && (
+                        <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => {
+                          setEditingBooking(booking);
+                          setEditPickup(booking.custom_pickup_lat ? { lat: booking.custom_pickup_lat, lng: booking.custom_pickup_lng, name: booking.custom_pickup_name } : undefined);
+                          setEditDropoff(booking.custom_dropoff_lat ? { lat: booking.custom_dropoff_lat, lng: booking.custom_dropoff_lng, name: booking.custom_dropoff_name } : undefined);
+                          setEditingPin(null);
+                        }}>
+                          <Edit3 className="w-3.5 h-3.5 me-1" />
+                          {lang === 'ar' ? 'تعديل الموقع' : 'Edit Location'}
+                        </Button>
                       )}
                     </div>
                   )}
