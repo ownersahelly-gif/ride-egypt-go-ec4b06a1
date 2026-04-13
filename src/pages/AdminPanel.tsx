@@ -348,14 +348,42 @@ const AdminPanel = () => {
     if (editingRouteId) {
       const { error } = await supabase.from('routes').update(routeData).eq('id', editingRouteId);
       if (error) { toast.error(error.message); return; }
+      // Insert imported stops for edited route
+      if (importedStops.length > 0) {
+        const stopsToInsert = importedStops.map((s, i) => ({
+          route_id: editingRouteId,
+          name_en: s.name,
+          name_ar: s.name,
+          lat: s.lat,
+          lng: s.lng,
+          stop_order: i + 1,
+          stop_type: 'both',
+        }));
+        await supabase.from('stops').insert(stopsToInsert);
+      }
       toast.success(lang === 'ar' ? 'تم تحديث المسار' : 'Route updated!');
     } else {
-      const { error } = await supabase.from('routes').insert(routeData);
+      const { data: newRoute, error } = await supabase.from('routes').insert(routeData).select().single();
       if (error) { toast.error(error.message); return; }
-      toast.success('Route created!');
+      // Auto-insert imported stops
+      if (newRoute && importedStops.length > 0) {
+        const stopsToInsert = importedStops.map((s, i) => ({
+          route_id: newRoute.id,
+          name_en: s.name,
+          name_ar: s.name,
+          lat: s.lat,
+          lng: s.lng,
+          stop_order: i + 1,
+          stop_type: 'both',
+        }));
+        await supabase.from('stops').insert(stopsToInsert);
+      }
+      toast.success(lang === 'ar' ? 'تم إنشاء المسار مع المحطات' : 'Route created with stops!');
     }
     setShowRouteForm(false);
     setEditingRouteId(null);
+    setImportedStops([]);
+    setMapsLink('');
     setRouteForm({ name_en: '', name_ar: '', origin_name_en: '', origin_name_ar: '', destination_name_en: '', destination_name_ar: '', origin_lat: 30.0444, origin_lng: 31.2357, destination_lat: 30.0131, destination_lng: 31.2089, price: 25, estimated_duration_minutes: 30 });
     fetchAllData();
   };
