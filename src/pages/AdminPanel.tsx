@@ -15,7 +15,8 @@ import {
   ChevronLeft, Route, Users, Car, Ticket, BarChart3, Plus, Edit, Trash2,
   CheckCircle2, XCircle, MapPin, Clock, Search, Globe, LogOut, Shield,
   Loader2, Eye, Database, Settings, Phone, Package, ListOrdered, RotateCcw,
-  Building2, DollarSign, Link2, ChevronDown, ChevronUp, MessageSquare, Send, Calendar
+  Building2, DollarSign, Link2, ChevronDown, ChevronUp, MessageSquare, Send, Calendar,
+  Copy
 } from 'lucide-react';
 import PackagePricing from '@/components/admin/PackagePricing';
 
@@ -712,6 +713,124 @@ const AdminPanel = () => {
     fetchAllData();
   };
 
+  // Reverse route - duplicate route in opposite direction with stops snapped to return road
+  const reverseRoute = async (route: any) => {
+    if (!confirm(lang === 'ar' 
+      ? 'سيتم إنشاء مسار معكوس من الوجهة إلى نقطة الانطلاق مع نقل المحطات للطريق المعاكس. متابعة؟' 
+      : 'This will create a reversed route from destination to origin with stops snapped to the return road. Continue?')) return;
+
+    toast.info(lang === 'ar' ? 'جاري إنشاء المسار المعكوس...' : 'Creating reversed route...');
+
+    // Create the reversed route
+    const { data: newRoute, error: routeError } = await supabase.from('routes').insert({
+      name_en: `${route.name_en} (Return)`,
+      name_ar: `${route.name_ar} (عودة)`,
+      origin_name_en: route.destination_name_en,
+      origin_name_ar: route.destination_name_ar,
+      origin_lat: route.destination_lat,
+      origin_lng: route.destination_lng,
+      destination_name_en: route.origin_name_en,
+      destination_name_ar: route.origin_name_ar,
+      destination_lat: route.origin_lat,
+      destination_lng: route.origin_lng,
+      price: route.price,
+      estimated_duration_minutes: route.estimated_duration_minutes,
+      status: 'active',
+    }).select().single();
+
+    if (routeError || !newRoute) {
+      toast.error(routeError?.message || 'Failed to create route');
+      return;
+    }
+
+    // Fetch original stops
+    const { data: originalStops } = await supabase.from('stops')
+      .select('*')
+      .eq('route_id', route.id)
+      .order('stop_order', { ascending: true });
+
+    if (originalStops && originalStops.length > 0) {
+      // Reverse the stops order
+      const reversedStops = [...originalStops].reverse();
+
+      // Try to snap each stop to the return road using Google Directions API
+      let snappedStops = reversedStops;
+      
+      if (window.google?.maps) {
+        try {
+          const directionsService = new google.maps.DirectionsService();
+          
+          // Get directions for the return route
+          const waypoints = reversedStops.slice(1, -1).map(s => ({
+            location: new google.maps.LatLng(s.lat, s.lng),
+            stopover: true,
+          }));
+
+          const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+            directionsService.route({
+              origin: new google.maps.LatLng(route.destination_lat, route.destination_lng),
+              destination: new google.maps.LatLng(route.origin_lat, route.origin_lng),
+              waypoints: waypoints.length > 0 ? waypoints : undefined,
+              travelMode: google.maps.TravelMode.DRIVING,
+              optimizeWaypoints: false,
+            }, (res, status) => {
+              if (status === 'OK' && res) resolve(res);
+              else reject(status);
+            });
+          });
+
+          // Extract snapped waypoint locations from legs
+          if (result.routes[0]?.legs) {
+            const legs = result.routes[0].legs;
+            // Each leg's end_location is the snapped waypoint (except the last leg which ends at destination)
+            const snappedCoords: { lat: number; lng: number }[] = [];
+            
+            // First stop is the route destination (now origin) - use as-is
+            snappedCoords.push({ lat: route.destination_lat, lng: route.destination_lng });
+            
+            // Intermediate stops from leg end locations
+            for (let i = 0; i < legs.length - 1; i++) {
+              const endLoc = legs[i].end_location;
+              snappedCoords.push({ lat: endLoc.lat(), lng: endLoc.lng() });
+            }
+            
+            // Last stop is the route origin (now destination) - use as-is
+            snappedCoords.push({ lat: route.origin_lat, lng: route.origin_lng });
+
+            // Apply snapped coords to intermediate stops only (skip first and last as they're origin/dest)
+            snappedStops = reversedStops.map((stop, i) => {
+              if (i > 0 && i < reversedStops.length - 1 && snappedCoords[i]) {
+                return { ...stop, lat: snappedCoords[i].lat, lng: snappedCoords[i].lng };
+              }
+              return stop;
+            });
+          }
+        } catch (err) {
+          console.warn('Could not snap stops to return road, using original coords:', err);
+        }
+      }
+
+      // Insert reversed stops
+      const stopsToInsert = snappedStops.map((s, i) => ({
+        route_id: newRoute.id,
+        name_en: s.name_en,
+        name_ar: s.name_ar,
+        lat: parseFloat(s.lat.toFixed(6)),
+        lng: parseFloat(s.lng.toFixed(6)),
+        stop_order: i + 1,
+        stop_type: s.stop_type,
+      }));
+
+      const { error: stopsError } = await supabase.from('stops').insert(stopsToInsert);
+      if (stopsError) {
+        toast.error(lang === 'ar' ? 'تم إنشاء المسار لكن فشل إضافة المحطات' : 'Route created but failed to add stops');
+      }
+    }
+
+    toast.success(lang === 'ar' ? 'تم إنشاء المسار المعكوس بنجاح!' : 'Reversed route created successfully!');
+    fetchAllData();
+  };
+
   const pendingBookings = bookings.filter(b => b.status === 'pending').sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   const waitlistBookings = bookings.filter(b => b.status === 'waitlist').sort((a, b) => (a.waitlist_position || 0) - (b.waitlist_position || 0));
 
@@ -1039,6 +1158,9 @@ const AdminPanel = () => {
                   </Button>
                   <Button size="sm" variant="default" onClick={() => setPublishRouteId(publishRouteId === route.id ? null : route.id)}>
                     <Send className="w-3.5 h-3.5 me-1" />{lang === 'ar' ? 'نشر رحلة' : 'Publish Trip'}
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => reverseRoute(route)}>
+                    <Copy className="w-3.5 h-3.5 me-1" />{lang === 'ar' ? 'عكس المسار' : 'Reverse Route'}
                   </Button>
                 </div>
 
@@ -1513,12 +1635,32 @@ const AdminPanel = () => {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Carpool Tab */}
+        {tab === 'carpool' && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold text-foreground">{lang === 'ar' ? 'طلبات تحقق الكاربول' : 'Carpool Verifications'}</h2>
+            {carpoolVerifications.length === 0 ? (
+              <div className="bg-card border border-border rounded-xl p-12 text-center text-muted-foreground">
+                {lang === 'ar' ? 'لا توجد طلبات' : 'No verifications yet'}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {carpoolVerifications.map(v => (
+                  <div key={v.id} className="bg-card border border-border rounded-xl p-5 space-y-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="font-semibold text-foreground">{carpoolProfiles[v.user_id]?.full_name || 'Unknown'}</p>
+                        <p className="text-xs text-muted-foreground">{carpoolProfiles[v.user_id]?.phone || 'No phone'}</p>
+                      </div>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusColors[v.status]}`}>{v.status}</span>
+                    </div>
                     <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
                       <div><span className="text-muted-foreground">{lang === 'ar' ? 'اللوحة:' : 'Plate:'}</span> <span className="font-medium">{v.license_plate}</span></div>
                       <div><span className="text-muted-foreground">{lang === 'ar' ? 'السيارة:' : 'Vehicle:'}</span> <span className="font-medium">{v.vehicle_model}</span></div>
                     </div>
-
-                    {/* Document Links */}
                     <div className="flex flex-wrap gap-2 mb-4">
                       {v.id_front_url && <a href={v.id_front_url} target="_blank" rel="noopener noreferrer" className="text-xs bg-muted px-2 py-1 rounded hover:bg-muted-foreground/10">{lang === 'ar' ? 'بطاقة أمام' : 'ID Front'}</a>}
                       {v.id_back_url && <a href={v.id_back_url} target="_blank" rel="noopener noreferrer" className="text-xs bg-muted px-2 py-1 rounded hover:bg-muted-foreground/10">{lang === 'ar' ? 'بطاقة خلف' : 'ID Back'}</a>}
@@ -1526,7 +1668,6 @@ const AdminPanel = () => {
                       {v.car_license_url && <a href={v.car_license_url} target="_blank" rel="noopener noreferrer" className="text-xs bg-muted px-2 py-1 rounded hover:bg-muted-foreground/10">{lang === 'ar' ? 'رخصة سيارة' : 'Car License'}</a>}
                       {v.selfie_url && <a href={v.selfie_url} target="_blank" rel="noopener noreferrer" className="text-xs bg-muted px-2 py-1 rounded hover:bg-muted-foreground/10">{lang === 'ar' ? 'صورة شخصية' : 'Selfie'}</a>}
                     </div>
-
                     {v.status === 'pending' && (
                       <div className="flex gap-2">
                         <Button size="sm" className="flex-1" onClick={() => handleCarpoolVerification(v.id, 'approved')}>
