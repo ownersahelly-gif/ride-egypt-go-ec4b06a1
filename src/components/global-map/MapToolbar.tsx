@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { ChevronLeft, Route, Layers, Filter, X, Plus, Trash2, MapPin, Circle, Save } from 'lucide-react';
+import { ChevronLeft, Route, Layers, Filter, X, Plus, Trash2, MapPin, Circle, Save, ExternalLink, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { type FilterState, type CircleZone, ZONE_COLORS, AREA_PRESETS } from './types';
 
