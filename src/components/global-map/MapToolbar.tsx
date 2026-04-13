@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { ChevronLeft, Route, Layers, Filter, X, Plus, Trash2, MapPin, Circle, Save, ExternalLink, Users, Lock, Unlock } from 'lucide-react';
+import { ChevronLeft, Route, Layers, Filter, X, Plus, Trash2, MapPin, Circle, Save, ExternalLink, Users, Lock, Unlock, Wand2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { type FilterState, type CircleZone, ZONE_COLORS, AREA_PRESETS } from './types';
+import { type FilterState, type CircleZone, type RouteRequestUser, ZONE_COLORS, AREA_PRESETS } from './types';
+import ZoneRecommender from './ZoneRecommender';
 
 interface MapToolbarProps {
   filters: FilterState;
@@ -39,6 +40,8 @@ interface MapToolbarProps {
   commonDaysActive: boolean;
   zonesLocked: boolean;
   onToggleZonesLocked: () => void;
+  allUsers: RouteRequestUser[];
+  onCreateZonePair: (pickup: Omit<CircleZone, 'id'>, dropoff: Omit<CircleZone, 'id'>) => void;
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -56,6 +59,7 @@ const MapToolbar = ({
   hourlyDistribution, canSaveConnectedRoute, onSaveConnectedRoute, savingConnectedRoute,
   onOpenInGoogleMaps, onFilterCommonDays, commonDaysActive,
   zonesLocked, onToggleZonesLocked,
+  allUsers, onCreateZonePair,
 }: MapToolbarProps) => {
   const [newPairName, setNewPairName] = useState('');
   const [showZones, setShowZones] = useState(false);
