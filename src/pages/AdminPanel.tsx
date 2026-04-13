@@ -835,6 +835,43 @@ const AdminPanel = () => {
             {showRouteForm && (
               <div className="bg-card border border-border rounded-xl p-6 space-y-4">
                 <h3 className="font-semibold text-foreground">{editingRouteId ? (lang === 'ar' ? 'تعديل المسار' : 'Edit Route') : (lang === 'ar' ? 'إنشاء مسار' : 'Create Route')}</h3>
+                
+                {/* Google Maps Link Import */}
+                <div className="bg-muted/50 border border-border rounded-lg p-4 space-y-2">
+                  <Label className="flex items-center gap-2 text-sm font-medium">
+                    <Link2 className="w-4 h-4" />
+                    {lang === 'ar' ? 'استيراد من رابط Google Maps' : 'Import from Google Maps Link'}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === 'ar' 
+                      ? 'الصق رابط اتجاهات Google Maps مع جميع المحطات وسيتم استيراد كل شيء تلقائياً'
+                      : 'Paste a Google Maps directions link with all stops and everything will be auto-imported'}
+                  </p>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={mapsLink} 
+                      onChange={e => setMapsLink(e.target.value)} 
+                      placeholder="https://www.google.com/maps/dir/Origin/Stop1/Stop2/Destination/..." 
+                      className="flex-1"
+                    />
+                    <Button onClick={parseGoogleMapsLink} disabled={parsingLink || !mapsLink.trim()} variant="secondary">
+                      {parsingLink ? <Loader2 className="w-4 h-4 animate-spin me-1" /> : <Globe className="w-4 h-4 me-1" />}
+                      {lang === 'ar' ? 'استيراد' : 'Import'}
+                    </Button>
+                  </div>
+                  {importedStops.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs font-medium text-foreground">{lang === 'ar' ? `${importedStops.length} محطات مستوردة:` : `${importedStops.length} imported stops:`}</p>
+                      {importedStops.map((s, i) => (
+                        <div key={i} className="text-xs text-muted-foreground flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-primary" />
+                          {i + 1}. {s.name.substring(0, 60)}{s.name.length > 60 ? '...' : ''}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Name (EN)</Label>
