@@ -505,6 +505,55 @@ const AdminPanel = () => {
     setRouteStopsMap(prev => ({ ...prev, [routeId]: data || [] }));
   };
 
+  // Find paired (return/original) route by naming convention
+  const findPairedRouteId = (routeId: string): string | null => {
+    const route = routes.find(r => r.id === routeId);
+    if (!route) return null;
+    
+    const returnSuffix = ' (Return)';
+    const returnSuffixAr = ' (عودة)';
+    
+    if (route.name_en.endsWith(returnSuffix)) {
+      // This is a return route — find the original
+      const originalName = route.name_en.slice(0, -returnSuffix.length);
+      const original = routes.find(r => r.name_en === originalName && r.id !== routeId);
+      return original?.id || null;
+    } else {
+      // This is an original route — find the return
+      const returnRoute = routes.find(r => r.name_en === `${route.name_en}${returnSuffix}` && r.id !== routeId);
+      return returnRoute?.id || null;
+    }
+  };
+
+  // Sync a stop to the paired route (add it in reversed order)
+  const syncStopToPairedRoute = async (pairedRouteId: string, stopData: { name_en: string; name_ar: string; lat: number; lng: number; stop_type: string; arrival_time?: string | null }) => {
+    // Get current stops of paired route
+    const { data: pairedStops } = await supabase.from('stops').select('*').eq('route_id', pairedRouteId).order('stop_order');
+    const currentCount = pairedStops?.length || 0;
+    
+    // Add stop at the beginning (since the paired route is reversed, a new stop at the end of route A goes to the beginning of route B)
+    // Actually, we insert at position 0 and shift others
+    // First shift all existing stops +1
+    if (pairedStops && pairedStops.length > 0) {
+      await Promise.all(pairedStops.map(s => 
+        supabase.from('stops').update({ stop_order: s.stop_order + 1 }).eq('id', s.id)
+      ));
+    }
+    
+    await supabase.from('stops').insert({
+      route_id: pairedRouteId,
+      name_en: stopData.name_en,
+      name_ar: stopData.name_ar,
+      lat: stopData.lat,
+      lng: stopData.lng,
+      stop_type: stopData.stop_type,
+      stop_order: 0,
+      arrival_time: stopData.arrival_time || null,
+    });
+    
+    await fetchStopsForRoute(pairedRouteId);
+  };
+
   const toggleRouteStops = async (routeId: string) => {
     if (expandedRouteStops === routeId) {
       setExpandedRouteStops(null);
@@ -519,19 +568,42 @@ const AdminPanel = () => {
   const addStop = async (routeId: string) => {
     if (!stopForm.name_en || !stopForm.name_ar) return;
     setAddingStop(true);
+    const pairedRouteId = findPairedRouteId(routeId);
+    
     if (editingStopId) {
+      // Find the old stop data before updating (to find match in paired route)
+      const oldStop = (routeStopsMap[routeId] || []).find(s => s.id === editingStopId);
+      
       const { error } = await supabase.from('stops').update({
         name_en: stopForm.name_en,
         name_ar: stopForm.name_ar,
         lat: stopForm.lat,
         lng: stopForm.lng,
         stop_type: stopForm.stop_type,
-        // keep existing stop_order when editing
         arrival_time: stopForm.arrival_time || null,
       }).eq('id', editingStopId);
       if (error) toast.error(error.message);
       else {
         toast.success(lang === 'ar' ? 'تم تحديث نقطة التوقف' : 'Stop updated');
+        
+        // Sync update to paired route
+        if (pairedRouteId && oldStop) {
+          const { data: pairedStops } = await supabase.from('stops').select('*').eq('route_id', pairedRouteId).order('stop_order');
+          const matchingStop = pairedStops?.find(s => s.name_en === oldStop.name_en && s.name_ar === oldStop.name_ar);
+          if (matchingStop) {
+            await supabase.from('stops').update({
+              name_en: stopForm.name_en,
+              name_ar: stopForm.name_ar,
+              lat: stopForm.lat,
+              lng: stopForm.lng,
+              stop_type: stopForm.stop_type,
+              arrival_time: stopForm.arrival_time || null,
+            }).eq('id', matchingStop.id);
+            await fetchStopsForRoute(pairedRouteId);
+            toast.info(lang === 'ar' ? 'تم تحديث المحطة في المسار المعاكس أيضاً' : 'Stop also updated in paired route');
+          }
+        }
+        
         setEditingStopId(null);
         setStopForm({ name_en: '', name_ar: '', lat: 0, lng: 0, stop_type: 'both', arrival_time: '' });
         await fetchStopsForRoute(routeId);
@@ -550,6 +622,20 @@ const AdminPanel = () => {
       if (error) toast.error(error.message);
       else {
         toast.success(lang === 'ar' ? 'تمت إضافة نقطة التوقف' : 'Stop added');
+        
+        // Sync to paired route
+        if (pairedRouteId) {
+          await syncStopToPairedRoute(pairedRouteId, {
+            name_en: stopForm.name_en,
+            name_ar: stopForm.name_ar,
+            lat: stopForm.lat,
+            lng: stopForm.lng,
+            stop_type: stopForm.stop_type,
+            arrival_time: stopForm.arrival_time || null,
+          });
+          toast.info(lang === 'ar' ? 'تمت إضافة المحطة في المسار المعاكس أيضاً' : 'Stop also added to paired route');
+        }
+        
         setStopForm({ name_en: '', name_ar: '', lat: 0, lng: 0, stop_type: 'both', arrival_time: '' });
         await fetchStopsForRoute(routeId);
       }
@@ -582,10 +668,33 @@ const AdminPanel = () => {
   };
 
   const deleteStop = async (stopId: string, routeId: string) => {
+    // Get stop data before deleting (for paired route sync)
+    const stopToDelete = (routeStopsMap[routeId] || []).find(s => s.id === stopId);
+    
     const { error } = await supabase.from('stops').delete().eq('id', stopId);
     if (error) toast.error(error.message);
     else {
       toast.success(lang === 'ar' ? 'تم حذف نقطة التوقف' : 'Stop deleted');
+      
+      // Sync delete to paired route
+      const pairedRouteId = findPairedRouteId(routeId);
+      if (pairedRouteId && stopToDelete) {
+        const { data: pairedStops } = await supabase.from('stops').select('*').eq('route_id', pairedRouteId).order('stop_order');
+        const matchingStop = pairedStops?.find(s => s.name_en === stopToDelete.name_en && s.name_ar === stopToDelete.name_ar);
+        if (matchingStop) {
+          await supabase.from('stops').delete().eq('id', matchingStop.id);
+          // Re-order paired route stops
+          const pairedRemaining = (pairedStops || []).filter(s => s.id !== matchingStop.id);
+          for (let i = 0; i < pairedRemaining.length; i++) {
+            if (pairedRemaining[i].stop_order !== i) {
+              await supabase.from('stops').update({ stop_order: i }).eq('id', pairedRemaining[i].id);
+            }
+          }
+          await fetchStopsForRoute(pairedRouteId);
+          toast.info(lang === 'ar' ? 'تم حذف المحطة من المسار المعاكس أيضاً' : 'Stop also deleted from paired route');
+        }
+      }
+      
       // Re-order remaining stops
       const remaining = (routeStopsMap[routeId] || []).filter(s => s.id !== stopId);
       for (let i = 0; i < remaining.length; i++) {
