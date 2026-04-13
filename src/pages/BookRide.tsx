@@ -103,12 +103,24 @@ const BookRide = () => {
 
   const fetchRideInstances = async (date: string) => {
     setLoadingRides(true);
-    const { data } = await supabase
-      .from('ride_instances')
-      .select('*, routes(name_en, name_ar, origin_name_en, origin_name_ar, destination_name_en, destination_name_ar, price, estimated_duration_minutes, origin_lat, origin_lng, destination_lat, destination_lng)')
-      .eq('ride_date', date)
-      .eq('status', 'scheduled')
-      .order('departure_time');
+    
+    // Fetch both ride_instances and published_trips
+    const [{ data }, { data: ptData }] = await Promise.all([
+      supabase
+        .from('ride_instances')
+        .select('*, routes(name_en, name_ar, origin_name_en, origin_name_ar, destination_name_en, destination_name_ar, price, estimated_duration_minutes, origin_lat, origin_lng, destination_lat, destination_lng)')
+        .eq('ride_date', date)
+        .eq('status', 'scheduled')
+        .order('departure_time'),
+      supabase
+        .from('published_trips')
+        .select('*, routes(name_en, name_ar, origin_name_en, origin_name_ar, destination_name_en, destination_name_ar, price, estimated_duration_minutes, origin_lat, origin_lng, destination_lat, destination_lng)')
+        .eq('trip_date', date)
+        .eq('status', 'active')
+        .order('departure_time'),
+    ]);
+
+    const allResults: any[] = [];
 
     if (data && data.length > 0) {
       const driverIds = [...new Set(data.map(r => r.driver_id))];
@@ -124,11 +136,9 @@ const BookRide = () => {
       (profiles || []).forEach(p => { pMap[p.user_id] = p; });
       const sMap: Record<string, any> = {};
       (shuttles || []).forEach(s => { sMap[s.id] = s; });
-      // Build stops map per route
       const stopsMap: Record<string, any[]> = {};
       (stops || []).forEach(s => { if (!stopsMap[s.route_id]) stopsMap[s.route_id] = []; stopsMap[s.route_id].push(s); });
-      setAllRouteStops(stopsMap);
-      // Build driver ratings
+      setAllRouteStops(prev => ({ ...prev, ...stopsMap }));
       const ratingsMap: Record<string, { total: number; count: number }> = {};
       (ratings || []).forEach(r => {
         if (!r.driver_id) return;
@@ -141,10 +151,31 @@ const BookRide = () => {
         driverRatingsResult[id] = { avg: total / count, count };
       });
       setDriverRatings(driverRatingsResult);
-      setRideInstances(data.map(r => ({ ...r, driver_profile: pMap[r.driver_id], shuttle_info: sMap[r.shuttle_id] })));
-    } else {
-      setRideInstances([]);
+      allResults.push(...data.map(r => ({ ...r, _type: 'ride', driver_profile: pMap[r.driver_id], shuttle_info: sMap[r.shuttle_id] })));
     }
+
+    // Add published trips
+    if (ptData && ptData.length > 0) {
+      // Fetch stops for published trip routes
+      const ptRouteIds = [...new Set(ptData.map(pt => pt.route_id))];
+      if (ptRouteIds.length > 0) {
+        const { data: ptStops } = await supabase.from('stops').select('*').in('route_id', ptRouteIds);
+        const stopsMap: Record<string, any[]> = {};
+        (ptStops || []).forEach(s => { if (!stopsMap[s.route_id]) stopsMap[s.route_id] = []; stopsMap[s.route_id].push(s); });
+        setAllRouteStops(prev => ({ ...prev, ...stopsMap }));
+      }
+      allResults.push(...ptData.map(pt => ({
+        ...pt,
+        _type: 'published',
+        ride_date: pt.trip_date,
+        route_id: pt.route_id,
+        direction: 'go',
+        available_seats: 99,
+        total_seats: 99,
+      })));
+    }
+
+    setRideInstances(allResults);
     setLoadingRides(false);
   };
 
