@@ -1242,7 +1242,16 @@ const AdminPanel = () => {
                     {(routeStopsMap[route.id] || []).length > 0 ? (
                       <div className="space-y-2">
                         {(routeStopsMap[route.id] || []).map((stop: any, idx: number) => (
-                          <div key={stop.id} className="flex items-center justify-between bg-surface rounded-lg px-3 py-2 text-sm">
+                          <div key={stop.id}
+                            draggable
+                            onDragStart={() => setDragStopIndex(idx)}
+                            onDragOver={(e) => { e.preventDefault(); setDragOverIndex(idx); }}
+                            onDragEnd={() => { setDragStopIndex(null); setDragOverIndex(null); }}
+                            onDrop={() => { if (dragStopIndex !== null) handleStopDrop(route.id, dragStopIndex, idx); setDragStopIndex(null); setDragOverIndex(null); }}
+                            className={`flex items-center justify-between bg-surface rounded-lg px-3 py-2 text-sm cursor-grab active:cursor-grabbing transition-all ${
+                              dragOverIndex === idx ? 'ring-2 ring-primary/50 scale-[1.01]' : ''
+                            } ${dragStopIndex === idx ? 'opacity-40' : ''}`}
+                          >
                             <div className="flex items-center gap-2">
                               <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold">{idx + 1}</span>
                               <div>
