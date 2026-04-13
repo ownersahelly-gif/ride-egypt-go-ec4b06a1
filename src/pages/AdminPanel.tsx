@@ -15,7 +15,7 @@ import {
   ChevronLeft, Route, Users, Car, Ticket, BarChart3, Plus, Edit, Trash2,
   CheckCircle2, XCircle, MapPin, Clock, Search, Globe, LogOut, Shield,
   Loader2, Eye, Database, Settings, Phone, Package, ListOrdered, RotateCcw,
-  Building2, DollarSign, Link2, ChevronDown, ChevronUp, MessageSquare
+  Building2, DollarSign, Link2, ChevronDown, ChevronUp, MessageSquare, Send, Calendar
 } from 'lucide-react';
 import PackagePricing from '@/components/admin/PackagePricing';
 
@@ -84,6 +84,13 @@ const AdminPanel = () => {
   const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
   const [showRejectInput, setShowRejectInput] = useState<string | null>(null);
   const [partnerPackageRequests, setPartnerPackageRequests] = useState<any[]>([]);
+
+  // Published trips
+  const [publishedTrips, setPublishedTrips] = useState<any[]>([]);
+  const [publishRouteId, setPublishRouteId] = useState<string | null>(null);
+  const [publishDate, setPublishDate] = useState(new Date().toISOString().split('T')[0]);
+  const [publishTime, setPublishTime] = useState('08:00');
+  const [publishingTrip, setPublishingTrip] = useState(false);
 
   // User filters
   const [userTypeFilter, setUserTypeFilter] = useState('all');
@@ -229,7 +236,35 @@ const AdminPanel = () => {
       setPartnerProfiles(ppMap);
     }
 
+    // Fetch published trips
+    const { data: pubTrips } = await supabase.from('published_trips').select('*').order('trip_date', { ascending: false }).limit(100);
+    setPublishedTrips(pubTrips || []);
+
     setLoading(false);
+  };
+
+  const handlePublishTrip = async () => {
+    if (!publishRouteId) return;
+    setPublishingTrip(true);
+    const { error } = await supabase.from('published_trips').insert({
+      route_id: publishRouteId,
+      departure_time: publishTime,
+      trip_date: publishDate,
+      status: 'active',
+    });
+    if (error) toast.error(error.message);
+    else {
+      toast.success(lang === 'ar' ? 'تم نشر الرحلة' : 'Trip published');
+      setPublishRouteId(null);
+      fetchAllData();
+    }
+    setPublishingTrip(false);
+  };
+
+  const handleUnpublishTrip = async (tripId: string) => {
+    await supabase.from('published_trips').update({ status: 'closed' }).eq('id', tripId);
+    toast.success(lang === 'ar' ? 'تم إلغاء النشر' : 'Trip unpublished');
+    fetchAllData();
   };
 
   const saveInstapayPhone = async () => {
@@ -1002,7 +1037,62 @@ const AdminPanel = () => {
                   }}>
                     <Trash2 className="w-3.5 h-3.5 me-1" />{lang === 'ar' ? 'حذف' : 'Delete'}
                   </Button>
+                  <Button size="sm" variant="default" onClick={() => setPublishRouteId(publishRouteId === route.id ? null : route.id)}>
+                    <Send className="w-3.5 h-3.5 me-1" />{lang === 'ar' ? 'نشر رحلة' : 'Publish Trip'}
+                  </Button>
                 </div>
+
+                {/* Publish Trip Form */}
+                {publishRouteId === route.id && (
+                  <div className="mt-3 p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
+                    <h4 className="font-semibold text-foreground text-sm flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-primary" />
+                      {lang === 'ar' ? 'نشر رحلة جديدة' : 'Publish New Trip'}
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      {lang === 'ar' ? 'سيتم عرض هذا المسار للمستخدمين للحجز والتخطيط' : 'This route will be shown to users for booking and planning'}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">{lang === 'ar' ? 'التاريخ' : 'Date'}</Label>
+                        <Input type="date" value={publishDate} onChange={e => setPublishDate(e.target.value)} className="mt-1" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">{lang === 'ar' ? 'وقت المغادرة' : 'Departure Time'}</Label>
+                        <Input type="time" value={publishTime} onChange={e => setPublishTime(e.target.value)} className="mt-1" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={handlePublishTrip} disabled={publishingTrip}>
+                        {publishingTrip ? <Loader2 className="w-3.5 h-3.5 animate-spin me-1" /> : <Send className="w-3.5 h-3.5 me-1" />}
+                        {lang === 'ar' ? 'نشر' : 'Publish'}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setPublishRouteId(null)}>
+                        {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Published trips for this route */}
+                {publishedTrips.filter(pt => pt.route_id === route.id && pt.status === 'active').length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">{lang === 'ar' ? 'الرحلات المنشورة:' : 'Published trips:'}</p>
+                    {publishedTrips.filter(pt => pt.route_id === route.id && pt.status === 'active').map(pt => (
+                      <div key={pt.id} className="flex items-center justify-between bg-surface rounded-lg px-3 py-2 text-xs">
+                        <span className="flex items-center gap-2">
+                          <Calendar className="w-3 h-3 text-primary" />
+                          <span className="font-medium">{pt.trip_date}</span>
+                          <Clock className="w-3 h-3 text-muted-foreground" />
+                          <span>{pt.departure_time?.slice(0, 5)}</span>
+                        </span>
+                        <Button size="sm" variant="ghost" className="h-6 text-xs text-destructive" onClick={() => handleUnpublishTrip(pt.id)}>
+                          <XCircle className="w-3 h-3 me-1" />{lang === 'ar' ? 'إلغاء' : 'Remove'}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Stops management panel */}
                 {expandedRouteStops === route.id && (
