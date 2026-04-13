@@ -170,8 +170,8 @@ const BookRide = () => {
         ride_date: pt.trip_date,
         route_id: pt.route_id,
         direction: 'go',
-        available_seats: 99,
-        total_seats: 99,
+        available_seats: 14,
+        total_seats: 14,
       })));
     }
 
@@ -890,15 +890,10 @@ const BookRide = () => {
                         <span className="flex items-center gap-1 text-muted-foreground">
                           <Clock className="w-3.5 h-3.5" />{formatTime12h(ride.departure_time, lang)}
                         </span>
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <Clock className="w-3.5 h-3.5" />{ride.routes?.estimated_duration_minutes} {t('booking.min')}
+                        <span className={`flex items-center gap-1 font-medium ${ride.available_seats <= 3 ? 'text-destructive' : 'text-green-600'}`}>
+                          <Users className="w-3.5 h-3.5" />
+                          {ride.available_seats}/{ride.total_seats} {lang === 'ar' ? 'متاح' : 'left'}
                         </span>
-                        {ride._type !== 'published' && (
-                          <span className={`flex items-center gap-1 font-medium ${ride.available_seats <= 3 ? 'text-destructive' : 'text-green-600'}`}>
-                            <Users className="w-3.5 h-3.5" />
-                            {ride.available_seats}/{ride.total_seats} {lang === 'ar' ? 'متاح' : 'left'}
-                          </span>
-                        )}
                       </div>
                       {ride._type !== 'published' && ride.available_seats <= 3 && ride.available_seats > 0 && (
                         <div className="mt-2 flex items-center gap-1 text-xs text-destructive font-medium">
