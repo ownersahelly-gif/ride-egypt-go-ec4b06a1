@@ -830,7 +830,14 @@ const GlobalMap = () => {
             onClick={() => setSelectedUser(u)}
             onDragEnd={(e) => {
               if (!e.latLng) return;
-              setAllUsers(prev => prev.map(usr => usr.id === u.id ? { ...usr, originLat: e.latLng!.lat(), originLng: e.latLng!.lng() } : usr));
+              const newLat = e.latLng.lat(), newLng = e.latLng.lng();
+              setAllUsers(prev => {
+                const updated = prev.map(usr => usr.id === u.id ? { ...usr, originLat: newLat, originLng: newLng } : usr);
+                // Auto-recalculate with updated positions
+                const visible = updated.filter(usr => !hiddenUserIds.has(usr.id));
+                setTimeout(() => recalculateConnectedRoutes(visible.slice(0, 25)), 100);
+                return updated;
+              });
             }}
           />
         ))}
@@ -848,7 +855,13 @@ const GlobalMap = () => {
             onClick={() => setSelectedUser(u)}
             onDragEnd={(e) => {
               if (!e.latLng) return;
-              setAllUsers(prev => prev.map(usr => usr.id === u.id ? { ...usr, destinationLat: e.latLng!.lat(), destinationLng: e.latLng!.lng() } : usr));
+              const newLat = e.latLng.lat(), newLng = e.latLng.lng();
+              setAllUsers(prev => {
+                const updated = prev.map(usr => usr.id === u.id ? { ...usr, destinationLat: newLat, destinationLng: newLng } : usr);
+                const visible = updated.filter(usr => !hiddenUserIds.has(usr.id));
+                setTimeout(() => recalculateConnectedRoutes(visible.slice(0, 25)), 100);
+                return updated;
+              });
             }}
           />
         ))}
