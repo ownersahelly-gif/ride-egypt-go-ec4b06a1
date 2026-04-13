@@ -30,6 +30,10 @@ interface MapToolbarProps {
   addingCircleType: 'pickup' | 'dropoff' | null;
   addingCirclePairId: string;
   onCancelAdding: () => void;
+  hourlyDistribution: { hour: number; count: number }[];
+  canSaveConnectedRoute: boolean;
+  onSaveConnectedRoute: () => void;
+  savingConnectedRoute: boolean;
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -44,6 +48,7 @@ const MapToolbar = ({
   loadingRoutes,
   circleZones, onAddCircleZone, onCreatePair, onDeletePair, onDeleteZone, onUpdateZoneRadius,
   addingCircleType, addingCirclePairId, onCancelAdding,
+  hourlyDistribution, canSaveConnectedRoute, onSaveConnectedRoute, savingConnectedRoute,
 }: MapToolbarProps) => {
   const [newPairName, setNewPairName] = useState('');
   const [showZones, setShowZones] = useState(false);
