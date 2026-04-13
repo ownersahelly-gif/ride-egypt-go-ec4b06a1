@@ -1284,7 +1284,22 @@ const AdminPanel = () => {
                     <Trash2 className="w-3.5 h-3.5 me-1" />{lang === 'ar' ? 'حذف' : 'Delete'}
                   </Button>
                   <Button size="sm" variant="default" onClick={() => setPublishRouteId(publishRouteId === route.id ? null : route.id)}>
-                    <Send className="w-3.5 h-3.5 me-1" />{lang === 'ar' ? 'نشر رحلة' : 'Publish Trip'}
+                    <Calendar className="w-3.5 h-3.5 me-1" />{lang === 'ar' ? 'خطة' : 'Plan'}
+                  </Button>
+                  <Button size="sm" variant={route.status === 'active' ? 'outline' : 'secondary'} onClick={async () => {
+                    const newStatus = route.status === 'active' ? 'draft' : 'active';
+                    const { error } = await supabase.from('routes').update({ status: newStatus }).eq('id', route.id);
+                    if (error) { toast.error(error.message); } else {
+                      toast.success(newStatus === 'active'
+                        ? (lang === 'ar' ? 'المسار متاح للسائقين الآن' : 'Route is now live for drivers')
+                        : (lang === 'ar' ? 'المسار مخفي عن السائقين' : 'Route hidden from drivers'));
+                      fetchAllData();
+                    }
+                  }}>
+                    <Send className="w-3.5 h-3.5 me-1" />
+                    {route.status === 'active'
+                      ? (lang === 'ar' ? 'إيقاف السائقين' : 'Unpublish Driver')
+                      : (lang === 'ar' ? 'نشر للسائقين' : 'Publish Driver')}
                   </Button>
                   <Button size="sm" variant="secondary" onClick={() => reverseRoute(route)}>
                     <Copy className="w-3.5 h-3.5 me-1" />{lang === 'ar' ? 'عكس المسار' : 'Reverse Route'}
