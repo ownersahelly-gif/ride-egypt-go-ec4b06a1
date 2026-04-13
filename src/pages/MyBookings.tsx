@@ -6,7 +6,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { formatTime12h } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { MapPin, Clock, Ticket, ChevronLeft, ChevronRight, MessageCircle, Navigation, Key, Star, Phone, Users, Timer, AlertCircle, Receipt, X, RotateCcw, Ban, Edit3, CheckCircle2 } from 'lucide-react';
+import { MapPin, Clock, Ticket, ChevronLeft, ChevronRight, MessageCircle, Navigation, Key, Star, Phone, Users, Timer, AlertCircle, Receipt, X, RotateCcw, Ban, Edit3, CheckCircle2, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MapView from '@/components/MapView';
 import RideChat from '@/components/RideChat';
@@ -47,6 +47,8 @@ const MyBookings = () => {
   const [editSelectedPickupStop, setEditSelectedPickupStop] = useState<any>(null);
   const [editSelectedDropoffStop, setEditSelectedDropoffStop] = useState<any>(null);
   const [savingLocation, setSavingLocation] = useState(false);
+  const [editMapCenter, setEditMapCenter] = useState<{ lat: number; lng: number } | undefined>(undefined);
+  const [editMapZoom, setEditMapZoom] = useState<number>(12);
 
   useEffect(() => {
     if (!user) return;
@@ -471,6 +473,14 @@ const MyBookings = () => {
                             <p className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'نقطة الركوب' : 'Pickup'}</p>
                             <p className="text-foreground text-xs truncate">{booking.custom_pickup_name}</p>
                           </div>
+                          {booking.custom_pickup_lat && booking.custom_pickup_lng && (
+                            <a href={`https://www.google.com/maps/dir/?api=1&destination=${booking.custom_pickup_lat},${booking.custom_pickup_lng}`}
+                              target="_blank" rel="noopener noreferrer" className="shrink-0">
+                              <Button variant="ghost" size="icon" className="w-7 h-7 text-primary">
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </Button>
+                            </a>
+                          )}
                         </div>
                       )}
                       {booking.custom_dropoff_name && (
@@ -480,17 +490,23 @@ const MyBookings = () => {
                             <p className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'نقطة النزول' : 'Dropoff'}</p>
                             <p className="text-foreground text-xs truncate">{booking.custom_dropoff_name}</p>
                           </div>
+                          {booking.custom_dropoff_lat && booking.custom_dropoff_lng && (
+                            <a href={`https://www.google.com/maps/dir/?api=1&destination=${booking.custom_dropoff_lat},${booking.custom_dropoff_lng}`}
+                              target="_blank" rel="noopener noreferrer" className="shrink-0">
+                              <Button variant="ghost" size="icon" className="w-7 h-7 text-primary">
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </Button>
+                            </a>
+                          )}
                         </div>
                       )}
                       {['confirmed', 'pending', 'quote_pending'].includes(booking.status) && !isExpired && (
                         <Button variant="outline" size="sm" className="w-full mt-2" onClick={async () => {
                           setEditingBooking(booking);
-                          // Fetch stops for this route
                           if (booking.route_id) {
                             const { data: stops } = await supabase.from('stops').select('*').eq('route_id', booking.route_id).order('stop_order');
                             setEditStops(stops || []);
                           }
-                          // Determine current mode from existing data
                           const route = booking.routes;
                           const isPickupAtOrigin = !booking.custom_pickup_lat || 
                             (Math.abs(booking.custom_pickup_lat - route?.origin_lat) < 0.001 && Math.abs(booking.custom_pickup_lng - route?.origin_lng) < 0.001);
@@ -500,6 +516,8 @@ const MyBookings = () => {
                           setEditDropoffMode(isDropoffAtDest ? 'end' : 'stop');
                           setEditSelectedPickupStop(null);
                           setEditSelectedDropoffStop(null);
+                          setEditMapCenter(undefined);
+                          setEditMapZoom(12);
                         }}>
                           <Edit3 className="w-3.5 h-3.5 me-1" />
                           {lang === 'ar' ? 'تعديل الموقع' : 'Edit Location'}
@@ -740,6 +758,25 @@ const MyBookings = () => {
           mapMarkers.push({ lat: editSelectedDropoffStop.lat, lng: editSelectedDropoffStop.lng, label: '✓', color: 'red' });
         }
 
+        // Build connection lines from origin → stops → destination
+        const connectionLines: { from: { lat: number; lng: number }; to: { lat: number; lng: number }; color?: string }[] = [];
+        if (route) {
+          const sortedStops = [...editStops].sort((a: any, b: any) => a.stop_order - b.stop_order);
+          const points = [
+            { lat: route.origin_lat, lng: route.origin_lng },
+            ...sortedStops.map((s: any) => ({ lat: s.lat, lng: s.lng })),
+            { lat: route.destination_lat, lng: route.destination_lng },
+          ];
+          for (let i = 0; i < points.length - 1; i++) {
+            connectionLines.push({ from: points[i], to: points[i + 1], color: '#3B82F6' });
+          }
+        }
+
+        const zoomToPoint = (lat: number, lng: number) => {
+          setEditMapCenter({ lat, lng });
+          setEditMapZoom(16);
+        };
+
         const handleSave = async () => {
           setSavingLocation(true);
           const updates: any = {};
@@ -803,6 +840,10 @@ const MyBookings = () => {
                   origin={{ lat: route.origin_lat, lng: route.origin_lng }}
                   destination={{ lat: route.destination_lat, lng: route.destination_lng }}
                   markers={mapMarkers}
+                  connectionLines={connectionLines}
+                  showDirections={false}
+                  center={editMapCenter}
+                  zoom={editMapZoom}
                   className="h-full w-full"
                 />
               </div>
@@ -816,7 +857,7 @@ const MyBookings = () => {
                   {lang === 'ar' ? 'نقطة الركوب' : 'Pickup'}
                 </h3>
                 <div className="flex gap-2">
-                  <button onClick={() => { setEditPickupMode('start'); setEditSelectedPickupStop(null); }}
+                  <button onClick={() => { setEditPickupMode('start'); setEditSelectedPickupStop(null); if (route) zoomToPoint(route.origin_lat, route.origin_lng); }}
                     className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${editPickupMode === 'start' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:border-primary/50'}`}>
                     {lang === 'ar' ? '🚏 نقطة الانطلاق' : '🚏 Starting Point'}
                   </button>
@@ -836,7 +877,7 @@ const MyBookings = () => {
                 {editPickupMode === 'stop' && (
                   <div className="space-y-1 max-h-40 overflow-y-auto">
                     {pickupStops.map((stop: any) => (
-                      <button key={stop.id} onClick={() => setEditSelectedPickupStop(stop)}
+                      <button key={stop.id} onClick={() => { setEditSelectedPickupStop(stop); zoomToPoint(stop.lat, stop.lng); }}
                         className={`w-full text-start px-3 py-2 rounded-lg text-xs border transition-colors flex items-center gap-2 ${
                           editSelectedPickupStop?.id === stop.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:border-primary/50'
                         }`}>
@@ -861,7 +902,7 @@ const MyBookings = () => {
                   {lang === 'ar' ? 'نقطة النزول' : 'Dropoff'}
                 </h3>
                 <div className="flex gap-2">
-                  <button onClick={() => { setEditDropoffMode('end'); setEditSelectedDropoffStop(null); }}
+                  <button onClick={() => { setEditDropoffMode('end'); setEditSelectedDropoffStop(null); if (route) zoomToPoint(route.destination_lat, route.destination_lng); }}
                     className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${editDropoffMode === 'end' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:border-primary/50'}`}>
                     {lang === 'ar' ? '🏁 نقطة الوصول' : '🏁 End Point'}
                   </button>
@@ -881,7 +922,7 @@ const MyBookings = () => {
                 {editDropoffMode === 'stop' && (
                   <div className="space-y-1 max-h-40 overflow-y-auto">
                     {dropoffStops.map((stop: any) => (
-                      <button key={stop.id} onClick={() => setEditSelectedDropoffStop(stop)}
+                      <button key={stop.id} onClick={() => { setEditSelectedDropoffStop(stop); zoomToPoint(stop.lat, stop.lng); }}
                         className={`w-full text-start px-3 py-2 rounded-lg text-xs border transition-colors flex items-center gap-2 ${
                           editSelectedDropoffStop?.id === stop.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:border-primary/50'
                         }`}>
