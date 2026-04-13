@@ -902,7 +902,7 @@ const MyBookings = () => {
                   {lang === 'ar' ? 'نقطة النزول' : 'Dropoff'}
                 </h3>
                 <div className="flex gap-2">
-                  <button onClick={() => { setEditDropoffMode('end'); setEditSelectedDropoffStop(null); }}
+                  <button onClick={() => { setEditDropoffMode('end'); setEditSelectedDropoffStop(null); if (route) zoomToPoint(route.destination_lat, route.destination_lng); }}
                     className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${editDropoffMode === 'end' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:border-primary/50'}`}>
                     {lang === 'ar' ? '🏁 نقطة الوصول' : '🏁 End Point'}
                   </button>
