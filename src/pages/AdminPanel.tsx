@@ -485,6 +485,20 @@ const AdminPanel = () => {
     toast.success('Route deactivated');
   };
 
+  // --- Find nearest stop number for a booking ---
+  const findNearestStopNumber = (routeId: string | null, lat: number | null, lng: number | null): number | null => {
+    if (!routeId || lat == null || lng == null) return null;
+    const stops = routeStopsMap[routeId];
+    if (!stops || stops.length === 0) return null;
+    let minDist = Infinity;
+    let nearestOrder: number | null = null;
+    for (const s of stops) {
+      const d = Math.pow(s.lat - lat, 2) + Math.pow(s.lng - lng, 2);
+      if (d < minDist) { minDist = d; nearestOrder = s.stop_order + 1; }
+    }
+    return nearestOrder;
+  };
+
   // --- Stops management ---
   const fetchStopsForRoute = async (routeId: string) => {
     const { data } = await supabase.from('stops').select('*').eq('route_id', routeId).order('stop_order');
