@@ -28,6 +28,7 @@ import CarpoolManage from "./pages/CarpoolManage.tsx";
 import Wallet from "./pages/Wallet.tsx";
 import DriverTestView from "./pages/DriverTestView.tsx";
 import PartnerDashboard from "./pages/PartnerDashboard.tsx";
+import GlobalMap from "./pages/GlobalMap.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Legal from "./pages/Legal.tsx";
 import GlobalNotifications from "./components/GlobalNotifications";
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="/carpool/manage/:id" element={<ProtectedRoute><CarpoolManage /></ProtectedRoute>} />
               <Route path="/legal" element={<Legal />} />
               <Route path="/partner" element={<ProtectedRoute><PartnerDashboard /></ProtectedRoute>} />
+              <Route path="/admin/global-map" element={<ProtectedRoute><GlobalMap /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

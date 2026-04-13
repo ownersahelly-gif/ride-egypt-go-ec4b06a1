@@ -79,6 +79,13 @@ const RequestRoute = () => {
         <div className="container mx-auto flex items-center h-16 px-4 gap-4">
           <Link to="/dashboard"><Button variant="ghost" size="icon"><Back className="w-5 h-5" /></Button></Link>
           <h1 className="text-lg font-bold text-foreground">{t('dashboard.requestRoute')}</h1>
+          <div className="flex-1" />
+          <Link to="/admin/global-map">
+            <Button variant="outline" size="sm" className="gap-1">
+              <MapPin className="w-4 h-4" />
+              {lang === 'ar' ? 'الخريطة الشاملة' : 'Global Map'}
+            </Button>
+          </Link>
         </div>
       </header>
 
