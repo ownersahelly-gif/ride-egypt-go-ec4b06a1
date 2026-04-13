@@ -1109,14 +1109,6 @@ const AdminPanel = () => {
                     </div>
                     <p className="text-xs text-muted-foreground">{routeForm.destination_lat.toFixed(4)}, {routeForm.destination_lng.toFixed(4)}</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>{lang === 'ar' ? 'السعر للفرد (جنيه)' : 'Price per person (EGP)'}</Label>
-                    <Input type="number" value={routeForm.price} onChange={e => setRouteForm(p => ({ ...p, price: parseFloat(e.target.value) }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Duration (min)</Label>
-                    <Input type="number" value={routeForm.estimated_duration_minutes} onChange={e => setRouteForm(p => ({ ...p, estimated_duration_minutes: parseInt(e.target.value) }))} />
-                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={createRoute} disabled={!routeForm.name_en || !routeForm.name_ar}>
@@ -1143,8 +1135,6 @@ const AdminPanel = () => {
                   <span>{lang === 'ar' ? route.destination_name_ar : route.destination_name_en}</span>
                 </div>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                  <span>{route.price} EGP</span>
-                  <span><Clock className="w-3 h-3 inline me-1" />{route.estimated_duration_minutes} min</span>
                   <span className="flex items-center gap-1">
                     <ListOrdered className="w-3 h-3 inline" />
                     {routeStopsMap[route.id]?.length || 0} {lang === 'ar' ? 'نقاط' : 'stops'}
