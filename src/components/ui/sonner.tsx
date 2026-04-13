@@ -8,10 +8,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
 
   return (
     <Sonner
-      style={{ top: 'calc(env(safe-area-inset-top, 0px) + 14px)' }}
+      style={{ top: 'calc(env(safe-area-inset-top, 0px) + 14px)', pointerEvents: 'none' }}
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       toastOptions={{
+        style: { pointerEvents: 'auto' },
         classNames: {
           toast:
             "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
