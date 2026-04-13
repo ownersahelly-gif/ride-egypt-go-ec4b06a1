@@ -818,7 +818,7 @@ const MyBookings = () => {
         const canSave = (editPickupMode === 'start' || !!editSelectedPickupStop) && (editDropoffMode === 'end' || !!editSelectedDropoffStop);
 
         return (
-          <div className="fixed inset-0 z-50 flex flex-col bg-background">
+          <div className="fixed inset-0 z-[70] flex flex-col bg-background">
             <header className="bg-card border-b border-border shrink-0 safe-area-top">
               <div className="flex items-center h-14 px-4 gap-3">
                 <Button variant="ghost" size="icon" onClick={() => setEditingBooking(null)}>
@@ -849,21 +849,21 @@ const MyBookings = () => {
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 pb-28 space-y-4">
               {/* Pickup selector */}
               <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
                 <h3 className="font-semibold text-foreground flex items-center gap-1 text-sm">
                   <MapPin className="w-4 h-4 text-green-500" />
                   {lang === 'ar' ? 'نقطة الركوب' : 'Pickup'}
                 </h3>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <button onClick={() => { setEditPickupMode('start'); setEditSelectedPickupStop(null); if (route) zoomToPoint(route.origin_lat, route.origin_lng); }}
-                    className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${editPickupMode === 'start' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:border-primary/50'}`}>
+                    className={`w-full sm:flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${editPickupMode === 'start' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:border-primary/50'}`}>
                     {lang === 'ar' ? '🚏 نقطة الانطلاق' : '🚏 Starting Point'}
                   </button>
                   {pickupStops.length > 0 && (
                     <button onClick={() => { setEditPickupMode('stop'); setEditSelectedPickupStop(null); }}
-                      className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${editPickupMode === 'stop' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:border-primary/50'}`}>
+                      className={`w-full sm:flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${editPickupMode === 'stop' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:border-primary/50'}`}>
                       {lang === 'ar' ? '📍 نقطة توقف' : '📍 Bus Stop'}
                     </button>
                   )}
@@ -875,7 +875,7 @@ const MyBookings = () => {
                   </div>
                 )}
                 {editPickupMode === 'stop' && (
-                  <div className="space-y-1 max-h-60 overflow-y-auto">
+                  <div className="space-y-1 max-h-[40vh] overflow-y-auto overscroll-contain pr-1 pb-3 sm:max-h-60">
                     {pickupStops.map((stop: any) => (
                       <button key={stop.id} onClick={() => { setEditSelectedPickupStop(stop); zoomToPoint(stop.lat, stop.lng); }}
                         className={`w-full text-start px-3 py-2 rounded-lg text-xs border transition-colors flex items-center gap-2 ${
@@ -901,14 +901,14 @@ const MyBookings = () => {
                   <MapPin className="w-4 h-4 text-destructive" />
                   {lang === 'ar' ? 'نقطة النزول' : 'Dropoff'}
                 </h3>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <button onClick={() => { setEditDropoffMode('end'); setEditSelectedDropoffStop(null); if (route) zoomToPoint(route.destination_lat, route.destination_lng); }}
-                    className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${editDropoffMode === 'end' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:border-primary/50'}`}>
+                    className={`w-full sm:flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${editDropoffMode === 'end' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:border-primary/50'}`}>
                     {lang === 'ar' ? '🏁 نقطة الوصول' : '🏁 End Point'}
                   </button>
                   {dropoffStops.length > 0 && (
                     <button onClick={() => { setEditDropoffMode('stop'); setEditSelectedDropoffStop(null); }}
-                      className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${editDropoffMode === 'stop' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:border-primary/50'}`}>
+                      className={`w-full sm:flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${editDropoffMode === 'stop' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:border-primary/50'}`}>
                       {lang === 'ar' ? '📍 نقطة توقف' : '📍 Bus Stop'}
                     </button>
                   )}
@@ -920,7 +920,7 @@ const MyBookings = () => {
                   </div>
                 )}
                 {editDropoffMode === 'stop' && (
-                  <div className="space-y-1 max-h-60 overflow-y-auto">
+                  <div className="space-y-1 max-h-[40vh] overflow-y-auto overscroll-contain pr-1 pb-3 sm:max-h-60">
                     {dropoffStops.map((stop: any) => (
                       <button key={stop.id} onClick={() => { setEditSelectedDropoffStop(stop); zoomToPoint(stop.lat, stop.lng); }}
                         className={`w-full text-start px-3 py-2 rounded-lg text-xs border transition-colors flex items-center gap-2 ${
@@ -944,7 +944,7 @@ const MyBookings = () => {
         );
       })()}
       
-      <BottomNav />
+      {!editingBooking && <BottomNav />}
     </div>
   );
 };
