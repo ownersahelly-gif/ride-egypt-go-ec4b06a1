@@ -41,9 +41,11 @@ const MyBookings = () => {
   const [receiptBooking, setReceiptBooking] = useState<any>(null);
   const [peerBookings, setPeerBookings] = useState<Record<string, any[]>>({});
   const [editingBooking, setEditingBooking] = useState<any>(null);
-  const [editingPin, setEditingPin] = useState<'origin' | 'destination' | null>(null);
-  const [editPickup, setEditPickup] = useState<{ lat: number; lng: number; name: string } | undefined>();
-  const [editDropoff, setEditDropoff] = useState<{ lat: number; lng: number; name: string } | undefined>();
+  const [editStops, setEditStops] = useState<any[]>([]);
+  const [editPickupMode, setEditPickupMode] = useState<'start' | 'stop'>('start');
+  const [editDropoffMode, setEditDropoffMode] = useState<'end' | 'stop'>('end');
+  const [editSelectedPickupStop, setEditSelectedPickupStop] = useState<any>(null);
+  const [editSelectedDropoffStop, setEditSelectedDropoffStop] = useState<any>(null);
   const [savingLocation, setSavingLocation] = useState(false);
 
   useEffect(() => {
