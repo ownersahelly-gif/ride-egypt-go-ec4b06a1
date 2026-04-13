@@ -725,20 +725,19 @@ const MyBookings = () => {
         const dropoffStops = editStops.filter((s: any) => s.stop_type === 'dropoff' || s.stop_type === 'both');
 
         // Build map markers
-        const mapMarkers: { lat: number; lng: number; label: string; color: string }[] = [];
+        const mapMarkers: { lat: number; lng: number; label?: string; color?: 'blue' | 'green' | 'orange' | 'purple' | 'red' }[] = [];
         if (route) {
-          mapMarkers.push({ lat: route.origin_lat, lng: route.origin_lng, label: 'A', color: '#22C55E' });
-          mapMarkers.push({ lat: route.destination_lat, lng: route.destination_lng, label: 'B', color: '#EF4444' });
+          mapMarkers.push({ lat: route.origin_lat, lng: route.origin_lng, label: 'A', color: 'green' });
+          mapMarkers.push({ lat: route.destination_lat, lng: route.destination_lng, label: 'B', color: 'red' });
         }
         editStops.forEach((stop: any) => {
-          mapMarkers.push({ lat: stop.lat, lng: stop.lng, label: (stop.stop_order + 1).toString(), color: '#3B82F6' });
+          mapMarkers.push({ lat: stop.lat, lng: stop.lng, label: (stop.stop_order + 1).toString(), color: 'blue' });
         });
-        // Highlight selected stops
         if (editPickupMode === 'stop' && editSelectedPickupStop) {
-          mapMarkers.push({ lat: editSelectedPickupStop.lat, lng: editSelectedPickupStop.lng, label: '🟢', color: '#22C55E' });
+          mapMarkers.push({ lat: editSelectedPickupStop.lat, lng: editSelectedPickupStop.lng, label: '✓', color: 'green' });
         }
         if (editDropoffMode === 'stop' && editSelectedDropoffStop) {
-          mapMarkers.push({ lat: editSelectedDropoffStop.lat, lng: editSelectedDropoffStop.lng, label: '🔴', color: '#EF4444' });
+          mapMarkers.push({ lat: editSelectedDropoffStop.lat, lng: editSelectedDropoffStop.lng, label: '✓', color: 'red' });
         }
 
         const handleSave = async () => {
