@@ -2416,8 +2416,8 @@ const AdminPanel = () => {
             ) : (
               <div className="space-y-3">
                 {groups.map((group, gi) => {
-                  const isExpanded = expandedGroupIndex === gi;
-                  const generated = generateSmartRoute(group);
+                   const isExpanded = expandedGroupIndex === gi;
+                   const generated = getEditedRoute(gi);
                   return (
                   <div key={gi} className="bg-card border border-border rounded-xl overflow-hidden">
                     <button className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors text-start" onClick={() => setExpandedGroupIndex(isExpanded ? null : gi)}>
