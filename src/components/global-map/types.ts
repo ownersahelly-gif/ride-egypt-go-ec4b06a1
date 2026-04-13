@@ -79,7 +79,8 @@ export function deduplicateRequests(
   const grouped: Record<string, RouteRequestUser> = {};
 
   for (const rr of requests) {
-    const key = `${rr.user_id}_${Math.round(rr.origin_lat * 50)}_${Math.round(rr.origin_lng * 50)}_${Math.round(rr.destination_lat * 50)}_${Math.round(rr.destination_lng * 50)}`;
+    // Deduplicate by user_id only — one entry per user, merge all requests
+    const key = rr.user_id;
     
     if (grouped[key]) {
       const existing = grouped[key];
