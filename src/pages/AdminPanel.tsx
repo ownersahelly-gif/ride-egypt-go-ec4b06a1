@@ -266,6 +266,8 @@ const AdminPanel = () => {
     toast.success(lang === 'ar' ? 'تم إلغاء النشر' : 'Trip unpublished');
     fetchAllData();
   };
+
+  const saveInstapayPhone = async () => {
     setSavingPhone(true);
     const { error } = await supabase.from('app_settings').upsert(
       { key: 'instapay_phone', value: instapayPhone },
