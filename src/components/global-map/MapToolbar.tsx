@@ -1,10 +1,10 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { ChevronLeft, Route, Layers, Filter, X } from 'lucide-react';
+import { ChevronLeft, Route, Layers, Filter, X, Plus, Trash2, MapPin, Circle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AREA_PRESETS, type FilterState, type AreaFilterMode } from './types';
+import { type FilterState, type CircleZone, ZONE_COLORS, AREA_PRESETS } from './types';
 
 interface MapToolbarProps {
   filters: FilterState;
@@ -21,14 +21,18 @@ interface MapToolbarProps {
   showFilters: boolean;
   onToggleFilters: () => void;
   loadingRoutes: boolean;
+  circleZones: CircleZone[];
+  onAddCircleZone: (pairId: string, type: 'pickup' | 'dropoff') => void;
+  onCreatePair: (name: string) => void;
+  onDeletePair: (pairId: string) => void;
+  onDeleteZone: (zoneId: string) => void;
+  onUpdateZoneRadius: (zoneId: string, radius: number) => void;
+  addingCircleType: 'pickup' | 'dropoff' | null;
+  addingCirclePairId: string;
+  onCancelAdding: () => void;
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const AREA_MODE_LABELS: { value: AreaFilterMode; label: string }[] = [
-  { value: 'both', label: 'Both' },
-  { value: 'pickup', label: 'Pickup only' },
-  { value: 'dropoff', label: 'Dropoff only' },
-];
 
 const MapToolbar = ({
   filters, onFiltersChange,
@@ -38,17 +42,23 @@ const MapToolbar = ({
   visibleCount, totalCount,
   showFilters, onToggleFilters,
   loadingRoutes,
+  circleZones, onAddCircleZone, onCreatePair, onDeletePair, onDeleteZone, onUpdateZoneRadius,
+  addingCircleType, addingCirclePairId, onCancelAdding,
 }: MapToolbarProps) => {
+  const [newPairName, setNewPairName] = useState('');
+  const [showZones, setShowZones] = useState(false);
+
   const toggleDay = (d: number) => {
     const days = filters.days.includes(d) ? filters.days.filter(x => x !== d) : [...filters.days, d];
     onFiltersChange({ ...filters, days });
   };
 
   const clearFilters = () => {
-    onFiltersChange({ timeFrom: '', timeTo: '', days: [], areaPreset: '', areaRadius: 5000, areaFilterMode: 'both', pickupArea: null, dropoffArea: null });
+    onFiltersChange({ timeFrom: '', timeTo: '', days: [] });
   };
 
-  const hasFilters = filters.timeFrom || filters.timeTo || filters.days.length > 0 || filters.areaPreset;
+  const hasFilters = filters.timeFrom || filters.timeTo || filters.days.length > 0;
+  const pairIds = [...new Set(circleZones.map(z => z.pairId))];
 
   return (
     <div className="absolute top-0 left-0 right-0 z-10 bg-card/95 backdrop-blur border-b border-border">
@@ -70,6 +80,10 @@ const MapToolbar = ({
           <Filter className="w-3.5 h-3.5" />
           Filters
           {hasFilters && <span className="w-2 h-2 rounded-full bg-primary" />}
+        </Button>
+        <Button variant={showZones ? 'secondary' : 'outline'} size="sm" onClick={() => setShowZones(!showZones)} className="gap-1">
+          <Circle className="w-3.5 h-3.5" />
+          Zones {circleZones.length > 0 && `(${pairIds.length})`}
         </Button>
         <Button variant={showLines ? 'secondary' : 'outline'} size="sm" onClick={onToggleLines} className="gap-1">
           <Layers className="w-3.5 h-3.5" />
@@ -106,48 +120,6 @@ const MapToolbar = ({
               <span className="text-xs">→</span>
               <Input type="time" className="w-28 h-7 text-xs" value={filters.timeTo} onChange={e => onFiltersChange({ ...filters, timeTo: e.target.value })} />
             </div>
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-muted-foreground">Area:</span>
-              <Select value={filters.areaPreset} onValueChange={v => onFiltersChange({ ...filters, areaPreset: v === 'all' ? '' : v })}>
-                <SelectTrigger className="w-36 h-7 text-xs">
-                  <SelectValue placeholder="All areas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All areas</SelectItem>
-                  {AREA_PRESETS.map(a => (
-                    <SelectItem key={a.name} value={a.name}>{a.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {filters.areaPreset && (
-              <>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-muted-foreground">Mode:</span>
-                  <Select value={filters.areaFilterMode} onValueChange={(v: AreaFilterMode) => onFiltersChange({ ...filters, areaFilterMode: v })}>
-                    <SelectTrigger className="w-32 h-7 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {AREA_MODE_LABELS.map(m => (
-                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-muted-foreground">Radius: {(filters.areaRadius / 1000).toFixed(1)}km</span>
-                  <Slider
-                    value={[filters.areaRadius]}
-                    min={1000}
-                    max={20000}
-                    step={500}
-                    onValueChange={([v]) => onFiltersChange({ ...filters, areaRadius: v })}
-                    className="w-24"
-                  />
-                </div>
-              </>
-            )}
             {hasFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 gap-1 text-xs">
                 <X className="w-3 h-3" /> Clear
@@ -169,6 +141,128 @@ const MapToolbar = ({
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Zone management panel */}
+      {showZones && (
+        <div className="px-3 pb-3 border-t border-border pt-2 space-y-3 max-h-[300px] overflow-y-auto">
+          <div className="flex items-center gap-2">
+            <Input
+              className="h-7 text-xs flex-1"
+              placeholder="New zone pair name..."
+              value={newPairName}
+              onChange={e => setNewPairName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && newPairName.trim()) {
+                  onCreatePair(newPairName.trim());
+                  setNewPairName('');
+                }
+              }}
+            />
+            <Button
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              disabled={!newPairName.trim()}
+              onClick={() => { onCreatePair(newPairName.trim()); setNewPairName(''); }}
+            >
+              <Plus className="w-3 h-3" /> Add Pair
+            </Button>
+          </div>
+
+          {pairIds.map((pairId, pairIdx) => {
+            const pairZones = circleZones.filter(z => z.pairId === pairId);
+            const pairName = pairZones[0]?.pairName || pairId;
+            const colorIdx = pairIdx % ZONE_COLORS.length;
+            const colors = ZONE_COLORS[colorIdx];
+            const pickupZone = pairZones.find(z => z.type === 'pickup');
+            const dropoffZone = pairZones.find(z => z.type === 'dropoff');
+
+            return (
+              <div key={pairId} className="border border-border rounded-lg p-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      <span className="w-3 h-3 rounded-full" style={{ background: colors.pickup }} />
+                      <span className="w-3 h-3 rounded-full" style={{ background: colors.dropoff }} />
+                    </div>
+                    <span className="text-xs font-bold text-foreground">{pairName}</span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => onDeletePair(pairId)}>
+                    <Trash2 className="w-3 h-3 text-destructive" />
+                  </Button>
+                </div>
+
+                {/* Pickup zone */}
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colors.pickup }} />
+                  <span className="text-[10px] text-muted-foreground w-8">PU</span>
+                  {pickupZone ? (
+                    <>
+                      <span className="text-[10px] text-foreground">{(pickupZone.radius / 1000).toFixed(1)}km</span>
+                      <Slider
+                        value={[pickupZone.radius]}
+                        min={1000}
+                        max={20000}
+                        step={500}
+                        onValueChange={([v]) => onUpdateZoneRadius(pickupZone.id, v)}
+                        className="w-20"
+                      />
+                      <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => onDeleteZone(pickupZone.id)}>
+                        <X className="w-2.5 h-2.5" />
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-5 text-[10px] gap-1"
+                      onClick={() => onAddCircleZone(pairId, 'pickup')}
+                    >
+                      <MapPin className="w-2.5 h-2.5" /> Click map to add
+                    </Button>
+                  )}
+                </div>
+
+                {/* Dropoff zone */}
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colors.dropoff }} />
+                  <span className="text-[10px] text-muted-foreground w-8">DO</span>
+                  {dropoffZone ? (
+                    <>
+                      <span className="text-[10px] text-foreground">{(dropoffZone.radius / 1000).toFixed(1)}km</span>
+                      <Slider
+                        value={[dropoffZone.radius]}
+                        min={1000}
+                        max={20000}
+                        step={500}
+                        onValueChange={([v]) => onUpdateZoneRadius(dropoffZone.id, v)}
+                        className="w-20"
+                      />
+                      <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => onDeleteZone(dropoffZone.id)}>
+                        <X className="w-2.5 h-2.5" />
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-5 text-[10px] gap-1"
+                      onClick={() => onAddCircleZone(pairId, 'dropoff')}
+                    >
+                      <MapPin className="w-2.5 h-2.5" /> Click map to add
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {pairIds.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-2">
+              Create a zone pair to filter by pickup and dropoff areas. Each pair links a pickup circle to a dropoff circle.
+            </p>
+          )}
         </div>
       )}
     </div>

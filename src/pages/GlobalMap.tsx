@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Polyline, DirectionsRenderer, Circle } from '@react-google-maps/api';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 import MapToolbar from '@/components/global-map/MapToolbar';
 import UserSidebar from '@/components/global-map/UserSidebar';
 import RouteBuilder from '@/components/global-map/RouteBuilder';
 import {
-  type RouteRequestUser, type FilterState, type RouteStop,
-  deduplicateRequests, AREA_PRESETS, isInRadius,
+  type RouteRequestUser, type FilterState, type RouteStop, type CircleZone,
+  deduplicateRequests, isInRadius, ZONE_COLORS,
 } from '@/components/global-map/types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, EyeOff } from 'lucide-react';
 
 const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 const cairoCenter = { lat: 30.0444, lng: 31.2357 };
@@ -28,10 +29,7 @@ const GlobalMap = () => {
   const [loading, setLoading] = useState(true);
 
   // UI state
-  const [filters, setFilters] = useState<FilterState>({
-    timeFrom: '', timeTo: '', days: [], areaPreset: '', areaRadius: 5000,
-    areaFilterMode: 'both', pickupArea: null, dropoffArea: null,
-  });
+  const [filters, setFilters] = useState<FilterState>({ timeFrom: '', timeTo: '', days: [] });
   const [showFilters, setShowFilters] = useState(false);
   const [hiddenUserIds, setHiddenUserIds] = useState<Set<string>>(new Set());
   const [selectedUser, setSelectedUser] = useState<RouteRequestUser | null>(null);
@@ -39,6 +37,11 @@ const GlobalMap = () => {
   const [showConnectedRoutes, setShowConnectedRoutes] = useState(false);
   const [connectedDirections, setConnectedDirections] = useState<google.maps.DirectionsResult[]>([]);
   const [loadingRoutes, setLoadingRoutes] = useState(false);
+
+  // Circle zones
+  const [circleZones, setCircleZones] = useState<CircleZone[]>([]);
+  const [addingCircleType, setAddingCircleType] = useState<'pickup' | 'dropoff' | null>(null);
+  const [addingCirclePairId, setAddingCirclePairId] = useState<string>('');
 
   // Route builder
   const [routeMode, setRouteMode] = useState(false);
@@ -68,12 +71,50 @@ const GlobalMap = () => {
     fetchData();
   }, []);
 
-  // Get the active area preset
-  const activePreset = filters.areaPreset ? AREA_PRESETS.find(a => a.name === filters.areaPreset) : null;
+  // Get unique pair IDs
+  const pairIds = [...new Set(circleZones.map(z => z.pairId))];
 
-  // Filter logic — returns users AND controls which markers to show
+  // Circle zone filtering: for each pair, user's pickup must be in pair's pickup circle AND dropoff in pair's dropoff circle
+  // If multiple pairs, show union of all matching users
+  const getZoneFilteredUserIds = (): Set<string> | null => {
+    if (circleZones.length === 0) return null; // no zone filtering
+
+    const matchedIds = new Set<string>();
+    
+    for (const pairId of pairIds) {
+      const pickupZone = circleZones.find(z => z.pairId === pairId && z.type === 'pickup');
+      const dropoffZone = circleZones.find(z => z.pairId === pairId && z.type === 'dropoff');
+      
+      for (const u of allUsers) {
+        if (hiddenUserIds.has(u.id)) continue;
+        
+        let pickupMatch = true;
+        let dropoffMatch = true;
+        
+        if (pickupZone) {
+          pickupMatch = isInRadius(u.originLat, u.originLng, pickupZone.lat, pickupZone.lng, pickupZone.radius);
+        }
+        if (dropoffZone) {
+          dropoffMatch = isInRadius(u.destinationLat, u.destinationLng, dropoffZone.lat, dropoffZone.lng, dropoffZone.radius);
+        }
+        
+        if (pickupMatch && dropoffMatch) {
+          matchedIds.add(u.id);
+        }
+      }
+    }
+    
+    return matchedIds;
+  };
+
+  const zoneFilteredIds = getZoneFilteredUserIds();
+
+  // Filter logic
   const filteredUsers = allUsers.filter(u => {
     if (hiddenUserIds.has(u.id)) return false;
+
+    // Zone filter
+    if (zoneFilteredIds !== null && !zoneFilteredIds.has(u.id)) return false;
 
     // Time filter
     if (filters.timeFrom && u.preferredTime) {
@@ -90,52 +131,35 @@ const GlobalMap = () => {
       if (!filters.days.some(d => u.preferredDays.includes(d))) return false;
     }
 
-    // Area filter with mode
-    if (activePreset) {
-      const r = filters.areaRadius;
-      const pickupIn = isInRadius(u.originLat, u.originLng, activePreset.lat, activePreset.lng, r);
-      const dropoffIn = isInRadius(u.destinationLat, u.destinationLng, activePreset.lat, activePreset.lng, r);
-
-      if (filters.areaFilterMode === 'pickup') {
-        // Only users whose pickup is inside the circle
-        if (!pickupIn) return false;
-      } else if (filters.areaFilterMode === 'dropoff') {
-        // Only users whose dropoff is inside the circle
-        if (!dropoffIn) return false;
-      } else {
-        // Both: at least one must be inside
-        if (!pickupIn && !dropoffIn) return false;
-      }
-    }
-
     return true;
   });
 
-  // Determine which markers to show based on area filter mode
-  const showPickupMarker = (u: RouteRequestUser) => {
-    if (!activePreset || filters.areaFilterMode === 'both') return true;
-    if (filters.areaFilterMode === 'pickup') return true; // show pickup markers (they're filtered to be inside)
-    // dropoff mode: only show dropoff markers of matching users, but also show their pickups? 
-    // Per user request: "only the drop offs of the people inside the circle should only be seen"
-    // So in dropoff mode, don't show pickups
-    if (filters.areaFilterMode === 'dropoff') return false;
-    return true;
-  };
-
-  const showDropoffMarker = (u: RouteRequestUser) => {
-    if (!activePreset || filters.areaFilterMode === 'both') return true;
-    if (filters.areaFilterMode === 'dropoff') return true;
-    // pickup mode: show only pickups inside circle + their dropoffs
-    // Per user request: "only these people inside the circle for pickup... and only the drop offs of the people inside the circle should only be seen"
-    if (filters.areaFilterMode === 'pickup') return true; // show dropoffs of matched users
-    return true;
-  };
-
-  // Map click handler for route building
+  // Map click handler
   const handleMapClick = useCallback(async (e: google.maps.MapMouseEvent) => {
-    if (!routeMode || !e.latLng) return;
+    if (!e.latLng) return;
     const lat = e.latLng.lat();
     const lng = e.latLng.lng();
+
+    // Adding a circle zone
+    if (addingCircleType && addingCirclePairId) {
+      const pairIndex = pairIds.indexOf(addingCirclePairId);
+      const pairName = circleZones.find(z => z.pairId === addingCirclePairId)?.pairName || addingCirclePairId;
+      const newZone: CircleZone = {
+        id: crypto.randomUUID(),
+        pairId: addingCirclePairId,
+        pairName,
+        type: addingCircleType,
+        lat, lng,
+        radius: 5000,
+      };
+      setCircleZones(prev => [...prev, newZone]);
+      setAddingCircleType(null);
+      setAddingCirclePairId('');
+      return;
+    }
+
+    // Route building
+    if (!routeMode) return;
 
     const geocoder = new google.maps.Geocoder();
     let name = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
@@ -157,7 +181,7 @@ const GlobalMap = () => {
       };
       setRouteStops(prev => [...prev, newStop]);
     }
-  }, [routeMode, startPoint, endPoint, routeStops]);
+  }, [routeMode, startPoint, endPoint, routeStops, addingCircleType, addingCirclePairId, circleZones, pairIds]);
 
   // Generate optimized route
   const handleGenerateRoute = useCallback(async () => {
@@ -201,7 +225,7 @@ const GlobalMap = () => {
     }
   }, [startPoint, endPoint, routeStops, toast]);
 
-  // Show connected routes: chain all pickups optimally, then connect to dropoffs
+  // Show connected routes
   const handleToggleConnectedRoutes = useCallback(async () => {
     if (showConnectedRoutes) {
       setShowConnectedRoutes(false);
@@ -209,7 +233,7 @@ const GlobalMap = () => {
       return;
     }
 
-    const users = filteredUsers.slice(0, 25); // Limit for API quota
+    const users = filteredUsers.slice(0, 25);
     if (users.length < 2) {
       toast({ title: 'Need at least 2 visible users', variant: 'destructive' });
       return;
@@ -221,18 +245,14 @@ const GlobalMap = () => {
     const results: google.maps.DirectionsResult[] = [];
 
     try {
-      // Step 1: Chain all pickups together optimally
       const pickupPoints = users.map(u => ({ lat: u.originLat, lng: u.originLng }));
-      
       if (pickupPoints.length <= 25) {
-        // Use first pickup as origin, last as destination, rest as waypoints
         const pickupOrigin = pickupPoints[0];
         const pickupDest = pickupPoints[pickupPoints.length - 1];
         const pickupWaypoints = pickupPoints.slice(1, -1).map(p => ({
           location: new google.maps.LatLng(p.lat, p.lng),
           stopover: true,
         }));
-
         try {
           const pickupRoute = await ds.route({
             origin: new google.maps.LatLng(pickupOrigin.lat, pickupOrigin.lng),
@@ -247,9 +267,7 @@ const GlobalMap = () => {
         }
       }
 
-      // Step 2: Chain all dropoffs together optimally
       const dropoffPoints = users.map(u => ({ lat: u.destinationLat, lng: u.destinationLng }));
-
       if (dropoffPoints.length <= 25) {
         const dropOrigin = dropoffPoints[0];
         const dropDest = dropoffPoints[dropoffPoints.length - 1];
@@ -257,7 +275,6 @@ const GlobalMap = () => {
           location: new google.maps.LatLng(p.lat, p.lng),
           stopover: true,
         }));
-
         try {
           const dropoffRoute = await ds.route({
             origin: new google.maps.LatLng(dropOrigin.lat, dropOrigin.lng),
@@ -272,17 +289,12 @@ const GlobalMap = () => {
         }
       }
 
-      // Step 3: Connect last pickup to first dropoff (bridge)
       if (results.length >= 1) {
-        // Get the optimized last pickup point
         const pickupRoute = results[0];
         const lastPickupLeg = pickupRoute.routes[0]?.legs;
         const lastPickup = lastPickupLeg?.[lastPickupLeg.length - 1]?.end_location;
-        
-        // Get the optimized first dropoff point
         const dropoffRoute = results.length >= 2 ? results[1] : null;
         const firstDropoff = dropoffRoute?.routes[0]?.legs?.[0]?.start_location;
-
         if (lastPickup && firstDropoff) {
           try {
             const bridgeRoute = await ds.route({
@@ -290,7 +302,6 @@ const GlobalMap = () => {
               destination: firstDropoff,
               travelMode: google.maps.TravelMode.DRIVING,
             });
-            // Insert bridge between pickup and dropoff routes
             results.splice(1, 0, bridgeRoute);
           } catch (e) {
             console.error('Bridge route failed:', e);
@@ -379,6 +390,30 @@ const GlobalMap = () => {
       if (next.has(userId)) next.delete(userId); else next.add(userId);
       return next;
     });
+    if (selectedUser?.id === userId) setSelectedUser(null);
+  };
+
+  // Circle zone helpers
+  const handleUpdateZoneRadius = (zoneId: string, radius: number) => {
+    setCircleZones(prev => prev.map(z => z.id === zoneId ? { ...z, radius } : z));
+  };
+
+  const handleMoveZone = (zoneId: string, lat: number, lng: number) => {
+    setCircleZones(prev => prev.map(z => z.id === zoneId ? { ...z, lat, lng } : z));
+  };
+
+  const handleDeleteZone = (zoneId: string) => {
+    setCircleZones(prev => prev.filter(z => z.id !== zoneId));
+  };
+
+  const handleDeletePair = (pairId: string) => {
+    setCircleZones(prev => prev.filter(z => z.pairId !== pairId));
+  };
+
+  const getZoneColor = (zone: CircleZone) => {
+    const idx = pairIds.indexOf(zone.pairId) % ZONE_COLORS.length;
+    const colors = ZONE_COLORS[idx];
+    return zone.type === 'pickup' ? colors.pickup : colors.dropoff;
   };
 
   if (!isLoaded || loading) {
@@ -389,8 +424,7 @@ const GlobalMap = () => {
     );
   }
 
-  // Route colors for connected routes visualization
-  const routeColors = ['#22c55e', '#ef4444', '#f59e0b']; // green for pickups, red for dropoffs, amber for bridge
+  const routeColors = ['#22c55e', '#ef4444', '#f59e0b'];
 
   return (
     <div className="h-screen w-screen relative overflow-hidden">
@@ -409,6 +443,27 @@ const GlobalMap = () => {
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(!showFilters)}
         loadingRoutes={loadingRoutes}
+        circleZones={circleZones}
+        onAddCircleZone={(pairId, type) => { setAddingCirclePairId(pairId); setAddingCircleType(type); }}
+        onCreatePair={(name) => {
+          const pairId = crypto.randomUUID().slice(0, 8);
+          // Just store the pair name, zones added via map clicks
+          setCircleZones(prev => [...prev, {
+            id: crypto.randomUUID(),
+            pairId,
+            pairName: name,
+            type: 'pickup',
+            lat: 30.05,
+            lng: 31.25,
+            radius: 5000,
+          }]);
+        }}
+        onDeletePair={handleDeletePair}
+        onDeleteZone={handleDeleteZone}
+        onUpdateZoneRadius={handleUpdateZoneRadius}
+        addingCircleType={addingCircleType}
+        addingCirclePairId={addingCirclePairId}
+        onCancelAdding={() => { setAddingCircleType(null); setAddingCirclePairId(''); }}
       />
 
       <UserSidebar
@@ -445,6 +500,16 @@ const GlobalMap = () => {
         />
       )}
 
+      {/* Adding circle instruction */}
+      {addingCircleType && (
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
+          Click on the map to place {addingCircleType} circle
+          <Button variant="ghost" size="sm" className="ml-2 text-primary-foreground h-6" onClick={() => { setAddingCircleType(null); setAddingCirclePairId(''); }}>
+            Cancel
+          </Button>
+        </div>
+      )}
+
       <GoogleMap
         mapContainerStyle={{ width: '100%', height: '100%' }}
         center={cairoCenter}
@@ -458,23 +523,45 @@ const GlobalMap = () => {
           streetViewControl: false,
         }}
       >
-        {/* Area filter circle */}
-        {activePreset && (
-          <Circle
-            center={{ lat: activePreset.lat, lng: activePreset.lng }}
-            radius={filters.areaRadius}
-            options={{
-              fillColor: filters.areaFilterMode === 'pickup' ? '#22c55e' : filters.areaFilterMode === 'dropoff' ? '#ef4444' : '#3b82f6',
-              fillOpacity: 0.1,
-              strokeColor: filters.areaFilterMode === 'pickup' ? '#22c55e' : filters.areaFilterMode === 'dropoff' ? '#ef4444' : '#3b82f6',
-              strokeWeight: 2,
-              strokeOpacity: 0.6,
-            }}
-          />
-        )}
+        {/* Circle zones */}
+        {circleZones.map(zone => {
+          const color = getZoneColor(zone);
+          return (
+            <Circle
+              key={zone.id}
+              center={{ lat: zone.lat, lng: zone.lng }}
+              radius={zone.radius}
+              draggable
+              onDragEnd={(e) => {
+                if (e.latLng) handleMoveZone(zone.id, e.latLng.lat(), e.latLng.lng());
+              }}
+              options={{
+                fillColor: color,
+                fillOpacity: 0.12,
+                strokeColor: color,
+                strokeWeight: 2,
+                strokeOpacity: 0.7,
+              }}
+            />
+          );
+        })}
 
-        {/* Pickup markers (green) — only show based on area filter mode */}
-        {filteredUsers.filter(showPickupMarker).map(u => (
+        {/* Zone labels */}
+        {circleZones.map(zone => (
+          <Marker
+            key={`label-${zone.id}`}
+            position={{ lat: zone.lat, lng: zone.lng }}
+            icon={{
+              url: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="28"><rect width="120" height="28" rx="6" fill="${getZoneColor(zone)}" opacity="0.85"/><text x="60" y="18" text-anchor="middle" fill="white" font-size="11" font-family="Arial" font-weight="bold">${zone.pairName} ${zone.type === 'pickup' ? '🟢 PU' : '🔴 DO'}</text></svg>`)}`,
+              scaledSize: new google.maps.Size(120, 28),
+              anchor: new google.maps.Point(60, 14),
+            }}
+            clickable={false}
+          />
+        ))}
+
+        {/* Pickup markers (green) */}
+        {filteredUsers.map(u => (
           <Marker
             key={`p-${u.id}`}
             position={{ lat: u.originLat, lng: u.originLng }}
@@ -486,8 +573,8 @@ const GlobalMap = () => {
           />
         ))}
 
-        {/* Dropoff markers (red) — only show based on area filter mode */}
-        {filteredUsers.filter(showDropoffMarker).map(u => (
+        {/* Dropoff markers (red) */}
+        {filteredUsers.map(u => (
           <Marker
             key={`d-${u.id}`}
             position={{ lat: u.destinationLat, lng: u.destinationLng }}
@@ -516,7 +603,7 @@ const GlobalMap = () => {
           />
         ))}
 
-        {/* Connected routes (pickup chain → bridge → dropoff chain) */}
+        {/* Connected routes */}
         {connectedDirections.map((dir, i) => (
           <DirectionsRenderer
             key={`cr-${i}`}
@@ -572,13 +659,13 @@ const GlobalMap = () => {
           />
         ))}
 
-        {/* InfoWindow */}
+        {/* InfoWindow with Hide button */}
         {selectedUser && (
           <InfoWindow
             position={{ lat: selectedUser.originLat, lng: selectedUser.originLng }}
             onCloseClick={() => setSelectedUser(null)}
           >
-            <div className="text-xs space-y-1 max-w-[200px]">
+            <div className="text-xs space-y-1 max-w-[220px]">
               <p className="font-bold">{selectedUser.name}</p>
               {selectedUser.phone && <p>📞 {selectedUser.phone}</p>}
               <p>🟢 {selectedUser.originName}</p>
@@ -588,6 +675,24 @@ const GlobalMap = () => {
                 <p>📅 {selectedUser.preferredDays.map(d => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}</p>
               )}
               <p className="text-gray-400">{selectedUser.requestIds.length} request(s)</p>
+              <button
+                onClick={() => toggleHide(selectedUser.id)}
+                style={{
+                  marginTop: '6px',
+                  padding: '4px 10px',
+                  fontSize: '11px',
+                  background: '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                👁‍🗨 Hide User
+              </button>
             </div>
           </InfoWindow>
         )}
