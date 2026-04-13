@@ -1159,6 +1159,9 @@ const AdminPanel = () => {
                   <Button size="sm" variant="default" onClick={() => setPublishRouteId(publishRouteId === route.id ? null : route.id)}>
                     <Send className="w-3.5 h-3.5 me-1" />{lang === 'ar' ? 'نشر رحلة' : 'Publish Trip'}
                   </Button>
+                  <Button size="sm" variant="secondary" onClick={() => reverseRoute(route)}>
+                    <Copy className="w-3.5 h-3.5 me-1" />{lang === 'ar' ? 'عكس المسار' : 'Reverse Route'}
+                  </Button>
                 </div>
 
                 {/* Publish Trip Form */}
