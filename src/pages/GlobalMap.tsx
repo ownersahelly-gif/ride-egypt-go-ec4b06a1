@@ -55,6 +55,7 @@ const GlobalMap = () => {
   const [price, setPrice] = useState('');
   const [saving, setSaving] = useState(false);
   const [savingConnectedRoute, setSavingConnectedRoute] = useState(false);
+  const [connectedRouteInfo, setConnectedRouteInfo] = useState<{ distance: string; duration: string } | null>(null);
 
   // Fetch data
   useEffect(() => {
@@ -252,6 +253,7 @@ const GlobalMap = () => {
     if (showConnectedRoutes) {
       setShowConnectedRoutes(false);
       setConnectedDirections([]);
+      setConnectedRouteInfo(null);
       return;
     }
 
@@ -335,6 +337,21 @@ const GlobalMap = () => {
     }
 
     setConnectedDirections(results);
+
+    // Calculate total duration/distance
+    let totalDist = 0;
+    let totalDur = 0;
+    results.forEach(dir => {
+      dir.routes[0]?.legs?.forEach(l => {
+        totalDist += l.distance?.value || 0;
+        totalDur += l.duration?.value || 0;
+      });
+    });
+    setConnectedRouteInfo({
+      distance: `${(totalDist / 1000).toFixed(1)} km`,
+      duration: `${Math.round(totalDur / 60)} min`,
+    });
+
     setLoadingRoutes(false);
   }, [showConnectedRoutes, filteredUsers, toast]);
 
@@ -668,6 +685,15 @@ const GlobalMap = () => {
         </div>
       )}
 
+      {/* Connected route info overlay */}
+      {showConnectedRoutes && connectedRouteInfo && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 bg-card/95 backdrop-blur border border-border px-5 py-3 rounded-xl shadow-lg flex items-center gap-4">
+          <div className="text-sm font-medium text-foreground">🛣️ {connectedRouteInfo.distance}</div>
+          <div className="text-sm font-medium text-foreground">⏱️ {connectedRouteInfo.duration}</div>
+          <div className="text-xs text-muted-foreground">{filteredUsers.length} users</div>
+        </div>
+      )}
+
       <GoogleMap
         mapContainerStyle={{ width: '100%', height: '100%' }}
         center={cairoCenter}
@@ -727,7 +753,12 @@ const GlobalMap = () => {
               url: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
               scaledSize: new google.maps.Size(32, 32),
             }}
+            draggable={showConnectedRoutes}
             onClick={() => setSelectedUser(u)}
+            onDragEnd={(e) => {
+              if (!e.latLng) return;
+              setAllUsers(prev => prev.map(usr => usr.id === u.id ? { ...usr, originLat: e.latLng!.lat(), originLng: e.latLng!.lng() } : usr));
+            }}
           />
         ))}
 
@@ -740,7 +771,12 @@ const GlobalMap = () => {
               url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
               scaledSize: new google.maps.Size(32, 32),
             }}
+            draggable={showConnectedRoutes}
             onClick={() => setSelectedUser(u)}
+            onDragEnd={(e) => {
+              if (!e.latLng) return;
+              setAllUsers(prev => prev.map(usr => usr.id === u.id ? { ...usr, destinationLat: e.latLng!.lat(), destinationLng: e.latLng!.lng() } : usr));
+            }}
           />
         ))}
 
