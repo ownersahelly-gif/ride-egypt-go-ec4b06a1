@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { ChevronLeft, Route, Layers, Filter, X, Plus, Trash2, MapPin, Circle } from 'lucide-react';
+import { ChevronLeft, Route, Layers, Filter, X, Plus, Trash2, MapPin, Circle, Save } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { type FilterState, type CircleZone, ZONE_COLORS, AREA_PRESETS } from './types';
 
@@ -137,6 +137,41 @@ const MapToolbar = ({
               </Button>
             )}
           </div>
+          {/* Hourly distribution */}
+          {hourlyDistribution.length > 0 && (
+            <div className="flex items-end gap-px h-10 bg-muted/30 rounded p-1">
+              {hourlyDistribution.map(h => {
+                const maxCount = Math.max(...hourlyDistribution.map(x => x.count));
+                const height = maxCount > 0 ? Math.max(4, (h.count / maxCount) * 28) : 4;
+                const isActive = (!filters.timeFrom && !filters.timeTo) ||
+                  (filters.timeFrom && filters.timeTo && 
+                   `${String(h.hour).padStart(2,'0')}:00` >= filters.timeFrom && 
+                   `${String(h.hour).padStart(2,'0')}:00` <= filters.timeTo);
+                return (
+                  <div key={h.hour} className="flex flex-col items-center flex-1 min-w-0 group relative cursor-pointer"
+                    onClick={() => {
+                      onFiltersChange({
+                        ...filters,
+                        timeFrom: `${String(h.hour).padStart(2,'0')}:00`,
+                        timeTo: `${String(h.hour + 1).padStart(2,'0')}:00`,
+                      });
+                    }}
+                  >
+                    <div className="absolute -top-5 bg-foreground text-background text-[9px] px-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10">
+                      {String(h.hour).padStart(2,'0')}:00 — {h.count}
+                    </div>
+                    <div
+                      className={`w-full rounded-sm transition-colors ${isActive ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                      style={{ height: `${height}px` }}
+                    />
+                    {h.hour % 3 === 0 && (
+                      <span className="text-[8px] text-muted-foreground mt-0.5">{h.hour}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div className="flex gap-1 flex-wrap">
             {DAY_LABELS.map((label, i) => (
               <button
