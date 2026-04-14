@@ -187,6 +187,7 @@ const RouteMapPreview = ({ stops, onReorder, lang }: Props) => {
               position={{ lat: stop.lat, lng: stop.lng }}
               draggable
               onDragEnd={(e) => handleMarkerDragEnd(idx, e)}
+              label={{
                 text: `${idx + 1}`,
                 color: '#fff',
                 fontWeight: 'bold',
