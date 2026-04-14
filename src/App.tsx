@@ -33,8 +33,15 @@ import NotFound from "./pages/NotFound.tsx";
 import Legal from "./pages/Legal.tsx";
 import Support from "./pages/Support.tsx";
 import GlobalNotifications from "./components/GlobalNotifications";
+import IncomingCall from "./pages/IncomingCall";
+import { useIncomingCall } from "./hooks/useIncomingCall";
 
 const queryClient = new QueryClient();
+
+const IncomingCallListener = () => {
+  useIncomingCall();
+  return null;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -45,6 +52,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <IncomingCallListener />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
@@ -72,6 +80,7 @@ const App = () => (
               <Route path="/support" element={<Support />} />
               <Route path="/partner" element={<ProtectedRoute><PartnerDashboard /></ProtectedRoute>} />
               <Route path="/admin/global-map" element={<ProtectedRoute><GlobalMap /></ProtectedRoute>} />
+              <Route path="/incoming-call" element={<IncomingCall />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
