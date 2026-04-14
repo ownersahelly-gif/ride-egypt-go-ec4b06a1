@@ -6,6 +6,20 @@ import { toast } from 'sonner';
 import type { OrderedStop } from './types';
 import { buildGoogleMapsLink, haversine } from './utils';
 
+/** Reverse-geocode a position to get a readable address */
+function reverseGeocode(lat: number, lng: number): Promise<string> {
+  return new Promise((resolve) => {
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+      if (status === 'OK' && results?.[0]) {
+        resolve(results[0].formatted_address);
+      } else {
+        resolve(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+      }
+    });
+  });
+}
+
 interface Props {
   stops: OrderedStop[];
   onReorder: (stops: OrderedStop[]) => void;
