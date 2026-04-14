@@ -184,8 +184,7 @@ const RouteMapPreview = ({ stops, onReorder, lang }: Props) => {
         )}
         <GoogleMap
           mapContainerStyle={{ width: '100%', height: '100%' }}
-          defaultCenter={center}
-          defaultZoom={11}
+          onLoad={handleMapLoad}
           options={{ disableDefaultUI: true, zoomControl: true }}
         >
           {stops.map((stop, idx) => (
