@@ -47,7 +47,7 @@ const Support = () => {
   const supportEmail = settings.support_email || 'support@massar-app.com';
 
   return (
-    <div className="min-h-screen bg-background" dir={isAr ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-background fixed inset-0 overflow-y-auto" dir={isAr ? 'rtl' : 'ltr'}>
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-40">
         <div className="container mx-auto flex items-center h-16 px-4 gap-3">
