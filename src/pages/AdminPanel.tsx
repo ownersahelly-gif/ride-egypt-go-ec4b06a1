@@ -2216,7 +2216,14 @@ const AdminPanel = () => {
                       });
 
                       if (callErr || callRes?.error) {
-                        toast.error(callRes?.error || callErr?.message || (lang === 'ar' ? 'فشل إرسال المكالمة' : 'Call failed'));
+                        const errMsg = callRes?.error || callErr?.message || '';
+                        if (errMsg.includes('No device token')) {
+                          toast.error(lang === 'ar'
+                            ? 'هذا المستخدم لم يفتح التطبيق على هاتفه بعد أو لم يسمح بالإشعارات. يجب أن يفتح التطبيق على جهاز iOS/Android أولاً.'
+                            : 'This user has not opened the app on their phone yet or has not allowed notifications. They must open the native app on iOS/Android first.');
+                        } else {
+                          toast.error(errMsg || (lang === 'ar' ? 'فشل إرسال المكالمة' : 'Call failed'));
+                        }
                       } else {
                         toast.success(lang === 'ar' ? 'تم إرسال إشعار المكالمة!' : 'Call notification sent!');
                       }
