@@ -16,7 +16,7 @@ import {
   CheckCircle2, XCircle, MapPin, Clock, Search, Globe, LogOut, Shield,
   Loader2, Eye, Database, Settings, Phone, Package, ListOrdered, RotateCcw,
   Building2, DollarSign, Link2, ChevronDown, ChevronUp, MessageSquare, Send, Calendar,
-  Copy, ExternalLink
+  Copy, ExternalLink, Bell
 } from 'lucide-react';
 import PackagePricing from '@/components/admin/PackagePricing';
 import LinkCombiner from '@/components/admin/LinkCombiner';
@@ -2336,7 +2336,36 @@ const AdminPanel = () => {
                             </span>
                           </td>
                           <td className="p-3 text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</td>
-                          <td className="p-3">
+                          <td className="p-3 flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-primary hover:text-primary hover:bg-primary/10"
+                              title={lang === 'ar' ? 'إرسال إشعار تجريبي' : 'Send test push notification'}
+                              onClick={async () => {
+                                try {
+                                  toast.loading(lang === 'ar' ? 'جاري الإرسال...' : 'Sending...', { id: `push-${p.user_id}` });
+                                  const { data, error } = await supabase.functions.invoke('push-notification', {
+                                    body: {
+                                      notification_type: 'test',
+                                      record: { user_id: p.user_id }
+                                    }
+                                  });
+                                  if (error) throw error;
+                                  toast.success(
+                                    lang === 'ar' ? 'تم إرسال الإشعار' : 'Push notification sent!',
+                                    { id: `push-${p.user_id}`, description: data?.message || '' }
+                                  );
+                                } catch (err: any) {
+                                  toast.error(
+                                    lang === 'ar' ? 'فشل إرسال الإشعار' : 'Failed to send notification',
+                                    { id: `push-${p.user_id}`, description: err.message }
+                                  );
+                                }
+                              }}
+                            >
+                              <Bell className="w-4 h-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"

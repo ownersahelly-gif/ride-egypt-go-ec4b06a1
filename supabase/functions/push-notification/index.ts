@@ -129,6 +129,34 @@ Deno.serve(async (req) => {
 
     const { type, record, notification_type } = await req.json();
 
+    // ── Test push notification ──
+    if (notification_type === "test" && record?.user_id) {
+      const userId = record.user_id;
+
+      const { data: tokens } = await supabase
+        .from("device_tokens")
+        .select("token, platform")
+        .eq("user_id", userId);
+
+      if (!tokens || tokens.length === 0) {
+        return new Response(
+          JSON.stringify({ message: "No device tokens for user — they may not have the app installed or push not registered" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      await sendFCM(
+        tokens,
+        { title: "🔔 Test Notification", body: "This is a test push notification from the admin panel!" },
+        { type: "test" }
+      );
+
+      return new Response(
+        JSON.stringify({ message: `Test notification sent to ${tokens.length} device(s)`, userId }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // ── Waitlist promotion notification ──
     if (notification_type === "waitlist_promoted" && record?.id && record?.user_id) {
       const userId = record.user_id;
