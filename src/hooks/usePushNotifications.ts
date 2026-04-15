@@ -13,6 +13,7 @@ export const usePushNotifications = () => {
     if (!user) return;
 
     let cancelled = false;
+    let removeListeners: Array<() => Promise<void> | void> = [];
 
     const setup = async () => {
       try {
@@ -26,7 +27,39 @@ export const usePushNotifications = () => {
         }
 
         const { PushNotifications } = await import('@capacitor/push-notifications');
+        const { FirebaseMessaging } = await import('@capacitor-firebase/messaging');
         const { supabase } = await import('@/integrations/supabase/client');
+
+        const saveToken = async (tokenValue: string) => {
+          const token = tokenValue?.trim();
+          if (!token || cancelled) return;
+
+          console.log('[Push] Saving token:', token.substring(0, 20) + '...');
+
+          try {
+            const { data: existing } = await supabase
+              .from('device_tokens')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('platform', platform)
+              .maybeSingle();
+
+            if (existing) {
+              const { error } = await supabase
+                .from('device_tokens')
+                .update({ token, updated_at: new Date().toISOString() })
+                .eq('id', existing.id);
+              console.log('[Push] Token updated:', error ? error.message : 'success');
+            } else {
+              const { error } = await supabase
+                .from('device_tokens')
+                .insert({ user_id: user.id, token, platform });
+              console.log('[Push] Token inserted:', error ? error.message : 'success');
+            }
+          } catch (e) {
+            console.error('[Push] Failed to save push token:', e);
+          }
+        };
 
         let permStatus = await PushNotifications.checkPermissions();
         console.log('[Push] Current permission status:', permStatus.receive);
@@ -42,48 +75,43 @@ export const usePushNotifications = () => {
 
         if (cancelled) return;
 
-        await PushNotifications.addListener('registration', async (token) => {
-          console.log('[Push] Got token:', token.value?.substring(0, 20) + '...');
-          try {
-            const { data: existing } = await supabase
-              .from('device_tokens')
-              .select('id')
-              .eq('user_id', user.id)
-              .eq('platform', platform)
-              .maybeSingle();
-
-            if (existing) {
-              const { error } = await supabase
-                .from('device_tokens')
-                .update({ token: token.value, updated_at: new Date().toISOString() })
-                .eq('id', existing.id);
-              console.log('[Push] Token updated:', error ? error.message : 'success');
-            } else {
-              const { error } = await supabase
-                .from('device_tokens')
-                .insert({ user_id: user.id, token: token.value, platform });
-              console.log('[Push] Token inserted:', error ? error.message : 'success');
-            }
-          } catch (e) {
-            console.error('[Push] Failed to save push token:', e);
-          }
+        const registrationListener = await PushNotifications.addListener('registration', async (token) => {
+          console.log('[Push] APNs/native registration token:', token.value?.substring(0, 20) + '...');
         });
+        removeListeners.push(() => registrationListener.remove());
 
-        await PushNotifications.addListener('registrationError', (error) => {
+        const registrationErrorListener = await PushNotifications.addListener('registrationError', (error) => {
           console.error('[Push] Registration error:', JSON.stringify(error));
         });
+        removeListeners.push(() => registrationErrorListener.remove());
 
-        await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        const receivedListener = await PushNotifications.addListener('pushNotificationReceived', (notification) => {
           console.log('[Push] Notification received in foreground:', notification);
         });
+        removeListeners.push(() => receivedListener.remove());
 
-        await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+        const actionListener = await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
           console.log('[Push] Notification action:', action);
         });
+        removeListeners.push(() => actionListener.remove());
+
+        const firebaseTokenListener = await FirebaseMessaging.addListener('tokenReceived', async (event) => {
+          console.log('[Push] Firebase tokenReceived event');
+          await saveToken(event.token);
+        });
+        removeListeners.push(() => firebaseTokenListener.remove());
 
         console.log('[Push] Calling register()...');
         await PushNotifications.register();
         console.log('[Push] register() called successfully');
+
+        try {
+          const { token } = await FirebaseMessaging.getToken();
+          console.log('[Push] Firebase getToken() success');
+          await saveToken(token);
+        } catch (firebaseError) {
+          console.error('[Push] Firebase getToken() failed:', firebaseError);
+        }
       } catch (err) {
         console.error('[Push] Setup error:', err);
       }
@@ -95,6 +123,7 @@ export const usePushNotifications = () => {
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      removeListeners.forEach((remove) => remove());
     };
   }, [user]);
 };
