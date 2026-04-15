@@ -27,7 +27,6 @@ export const usePushNotifications = () => {
         }
 
         const { PushNotifications } = await import('@capacitor/push-notifications');
-        const { FirebaseMessaging } = await import('@capacitor-firebase/messaging');
         const { supabase } = await import('@/integrations/supabase/client');
 
         const saveToken = async (tokenValue: string) => {
@@ -76,7 +75,8 @@ export const usePushNotifications = () => {
         if (cancelled) return;
 
         const registrationListener = await PushNotifications.addListener('registration', async (token) => {
-          console.log('[Push] APNs/native registration token:', token.value?.substring(0, 20) + '...');
+          console.log('[Push] Registration token:', token.value?.substring(0, 20) + '...');
+          await saveToken(token.value);
         });
         removeListeners.push(() => registrationListener.remove());
 
@@ -95,23 +95,9 @@ export const usePushNotifications = () => {
         });
         removeListeners.push(() => actionListener.remove());
 
-        const firebaseTokenListener = await FirebaseMessaging.addListener('tokenReceived', async (event) => {
-          console.log('[Push] Firebase tokenReceived event');
-          await saveToken(event.token);
-        });
-        removeListeners.push(() => firebaseTokenListener.remove());
-
         console.log('[Push] Calling register()...');
         await PushNotifications.register();
         console.log('[Push] register() called successfully');
-
-        try {
-          const { token } = await FirebaseMessaging.getToken();
-          console.log('[Push] Firebase getToken() success');
-          await saveToken(token);
-        } catch (firebaseError) {
-          console.error('[Push] Firebase getToken() failed:', firebaseError);
-        }
       } catch (err) {
         console.error('[Push] Setup error:', err);
       }
