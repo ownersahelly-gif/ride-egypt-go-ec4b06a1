@@ -2346,13 +2346,10 @@ const AdminPanel = () => {
                               onClick={async () => {
                                 try {
                                   toast.loading(lang === 'ar' ? 'جاري الإرسال...' : 'Sending...', { id: `push-${p.user_id}` });
-                                  const { data, error } = await supabase.functions.invoke('push-notification', {
-                                    body: {
-                                      notification_type: 'test',
-                                      record: { user_id: p.user_id }
-                                    }
+                                  const data = await sendPushNotification({
+                                    notification_type: 'test',
+                                    record: { user_id: p.user_id }
                                   });
-                                  if (error) throw error;
                                   toast.success(
                                     lang === 'ar' ? 'تم إرسال الإشعار' : 'Push notification sent!',
                                     { id: `push-${p.user_id}`, description: data?.message || '' }

@@ -453,17 +453,15 @@ const DriverDashboard = () => {
       }
 
       // Send push notification to all booked riders
-      await supabase.functions.invoke('push-notification', {
-        body: {
-          notification_type: 'trip_started',
-          record: {
-            shuttle_id: shuttle.id,
-            route_id: slot.routeId,
-            driver_id: user.id,
-            scheduled_date: slot.dateStr,
-            scheduled_time: slot.time,
-            direction: slot.direction === 'back' ? 'return' : 'go',
-          },
+      await sendPushNotification({
+        notification_type: 'trip_started',
+        record: {
+          shuttle_id: shuttle.id,
+          route_id: slot.routeId,
+          driver_id: user.id,
+          scheduled_date: slot.dateStr,
+          scheduled_time: slot.time,
+          direction: slot.direction === 'back' ? 'return' : 'go',
         },
       });
     } catch (e) {
