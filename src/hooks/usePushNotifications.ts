@@ -45,8 +45,10 @@ export const usePushNotifications = () => {
         await PushNotifications.register();
         console.log("[Push] register() called successfully");
 
-        const { FirebaseMessaging } = await import("@capacitor-firebase/messaging");
-        const { token } = await FirebaseMessaging.getToken();
+        // Use Function constructor to completely hide the import from Rollup/Vite
+        const dynamicImport = new Function('specifier', 'return import(specifier)');
+        const firebaseModule = await dynamicImport('@capacitor-firebase/messaging');
+        const { token } = await firebaseModule.FirebaseMessaging.getToken();
         console.log("[Push] Got FCM token:", token?.substring(0, 20) + "...");
 
         if (!token || cancelled) return;
