@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GoogleMap, Marker, Polyline } from '@react-google-maps/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Copy, ExternalLink, MapPin, Trash2, GripVertical, Loader2, Save } from 'lucide-react';
+import { Copy, ExternalLink, MapPin, Trash2, GripVertical, Loader2, Save, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { OrderedStop } from './types';
@@ -43,6 +43,8 @@ const RouteMapPreview = ({ stops, onReorder, lang }: Props) => {
   const [routeDuration, setRouteDuration] = useState<number | null>(null);
   const [routeName, setRouteName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [addingStop, setAddingStop] = useState(false);
+  const [addStopType, setAddStopType] = useState<'P' | 'D'>('P');
   const [initialCenter] = useState<google.maps.LatLngLiteral>(() => {
     if (stops.length === 0) return { lat: 30.05, lng: 31.25 };
     const lat = stops.reduce((sum, stop) => sum + stop.lat, 0) / stops.length;
@@ -135,6 +137,18 @@ const RouteMapPreview = ({ stops, onReorder, lang }: Props) => {
     toast.success(lang === 'ar' ? 'تم تحديث الموقع' : 'Location updated');
   }, [stops, onReorder, lang]);
 
+  const handleMapClick = useCallback(async (e: google.maps.MapMouseEvent) => {
+    if (!addingStop || !e.latLng) return;
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    const name = await reverseGeocode(lat, lng);
+    const maxLinkIdx = stops.length > 0 ? Math.max(...stops.map(s => s.linkIdx)) + 1 : 0;
+    const newStop: OrderedStop = { lat, lng, name, linkIdx: maxLinkIdx, type: addStopType };
+    onReorder([...stops, newStop]);
+    setAddingStop(false);
+    toast.success(lang === 'ar' ? 'تمت إضافة المحطة' : 'Stop added');
+  }, [addingStop, addStopType, stops, onReorder, lang]);
+
   const deleteStop = useCallback((idx: number) => {
     const newStops = stops.filter((_, i) => i !== idx);
     onReorder(newStops);
@@ -218,10 +232,16 @@ const RouteMapPreview = ({ stops, onReorder, lang }: Props) => {
             {lang === 'ar' ? 'جارِ تحميل المسار...' : 'Loading route...'}
           </div>
         )}
+        {addingStop && (
+          <div className="absolute top-2 right-2 z-10 bg-primary text-primary-foreground rounded-md px-3 py-1.5 text-xs font-medium animate-pulse">
+            {lang === 'ar' ? 'انقر على الخريطة لإضافة محطة' : 'Click on the map to add a stop'}
+          </div>
+        )}
         <GoogleMap
           mapContainerStyle={{ width: '100%', height: '100%' }}
           onLoad={handleMapLoad}
-          options={{ disableDefaultUI: true, zoomControl: true }}
+          onClick={handleMapClick}
+          options={{ disableDefaultUI: true, zoomControl: true, draggableCursor: addingStop ? 'crosshair' : undefined }}
         >
           {stops.map((stop, idx) => (
             <Marker
@@ -342,6 +362,36 @@ const RouteMapPreview = ({ stops, onReorder, lang }: Props) => {
         ))}
       </div>
 
+      {/* Add stop button */}
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant={addingStop ? 'default' : 'outline'}
+          onClick={() => setAddingStop(!addingStop)}
+          className="gap-1.5"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          {addingStop
+            ? (lang === 'ar' ? 'إلغاء' : 'Cancel')
+            : (lang === 'ar' ? 'إضافة محطة' : 'Add Stop')}
+        </Button>
+        {addingStop && (
+          <div className="flex items-center gap-1 text-xs">
+            <button
+              onClick={() => setAddStopType('P')}
+              className={`px-2 py-0.5 rounded ${addStopType === 'P' ? 'bg-emerald-500 text-white' : 'bg-muted text-muted-foreground'}`}
+            >
+              {lang === 'ar' ? 'التقاط' : 'Pickup'}
+            </button>
+            <button
+              onClick={() => setAddStopType('D')}
+              className={`px-2 py-0.5 rounded ${addStopType === 'D' ? 'bg-destructive text-white' : 'bg-muted text-muted-foreground'}`}
+            >
+              {lang === 'ar' ? 'توصيل' : 'Dropoff'}
+            </button>
+          </div>
+        )}
+      </div>
       {/* Save & Final link */}
       <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3">
         <p className="text-sm font-semibold text-primary">
